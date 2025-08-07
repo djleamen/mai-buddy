@@ -97,26 +97,26 @@ class MaiBuddyRenderer {
       if (e.target === this.messageInput) return; // Don't interfere with input
       
       switch(e.key) {
-        case 'PageUp':
+      case 'PageUp':
+        e.preventDefault();
+        this.scrollChat(-200);
+        break;
+      case 'PageDown':
+        e.preventDefault();
+        this.scrollChat(200);
+        break;
+      case 'Home':
+        if (e.ctrlKey || e.metaKey) {
           e.preventDefault();
-          this.scrollChat(-200);
-          break;
-        case 'PageDown':
+          this.scrollToTop();
+        }
+        break;
+      case 'End':
+        if (e.ctrlKey || e.metaKey) {
           e.preventDefault();
-          this.scrollChat(200);
-          break;
-        case 'Home':
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            this.scrollToTop();
-          }
-          break;
-        case 'End':
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            this.scrollToBottom();
-          }
-          break;
+          this.scrollToBottom();
+        }
+        break;
       }
     });
 
@@ -271,7 +271,7 @@ class MaiBuddyRenderer {
       
     } catch (error) {
       this.hideTypingIndicator();
-      this.addMessage('assistant', `I apologize, but I'm having trouble processing your request. Please check your API settings.`, true);
+      this.addMessage('assistant', 'I apologize, but I\'m having trouble processing your request. Please check your API settings.', true);
       console.error('Error sending message:', error);
     }
   }

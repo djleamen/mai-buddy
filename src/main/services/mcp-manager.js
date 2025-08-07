@@ -404,20 +404,20 @@ class MCPManager {
 
   async establishConnection(connection) {
     switch (connection.type) {
-      case 'api':
-        await this.connectToAPI(connection);
-        break;
-      case 'websocket':
-        await this.connectToWebSocket(connection);
-        break;
-      case 'database':
-        await this.connectToDatabase(connection);
-        break;
-      case 'local':
-        await this.connectToLocal(connection);
-        break;
-      default:
-        throw new Error(`Unsupported connection type: ${connection.type}`);
+    case 'api':
+      await this.connectToAPI(connection);
+      break;
+    case 'websocket':
+      await this.connectToWebSocket(connection);
+      break;
+    case 'database':
+      await this.connectToDatabase(connection);
+      break;
+    case 'local':
+      await this.connectToLocal(connection);
+      break;
+    default:
+      throw new Error(`Unsupported connection type: ${connection.type}`);
     }
   }
 
@@ -427,12 +427,12 @@ class MCPManager {
       
       if (connection.requiresAuth) {
         switch (connection.authType) {
-          case 'token':
-            headers['Authorization'] = `Bearer ${connection.apiKey}`;
-            break;
-          case 'oauth':
-            headers['Authorization'] = `Bearer ${connection.accessToken}`;
-            break;
+        case 'token':
+          headers['Authorization'] = `Bearer ${connection.apiKey}`;
+          break;
+        case 'oauth':
+          headers['Authorization'] = `Bearer ${connection.accessToken}`;
+          break;
         }
       }
 
