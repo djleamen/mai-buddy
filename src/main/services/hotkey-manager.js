@@ -69,23 +69,23 @@ class HotkeyManager {
     const { ipcMain } = require('electron');
     
     switch (action) {
-      case 'show-chat':
-        ipcMain.emit('hotkey-show-chat');
-        break;
-      case 'voice-activation':
-        ipcMain.emit('hotkey-voice-activation');
-        break;
-      case 'quick-capture':
-        ipcMain.emit('hotkey-quick-capture');
-        break;
-      case 'toggle-listening':
-        ipcMain.emit('hotkey-toggle-listening');
-        break;
-      case 'hide-window':
-        ipcMain.emit('hotkey-hide-window');
-        break;
-      default:
-        console.log(`Unknown hotkey action: ${action}`);
+    case 'show-chat':
+      ipcMain.emit('hotkey-show-chat');
+      break;
+    case 'voice-activation':
+      ipcMain.emit('hotkey-voice-activation');
+      break;
+    case 'quick-capture':
+      ipcMain.emit('hotkey-quick-capture');
+      break;
+    case 'toggle-listening':
+      ipcMain.emit('hotkey-toggle-listening');
+      break;
+    case 'hide-window':
+      ipcMain.emit('hotkey-hide-window');
+      break;
+    default:
+      console.log(`Unknown hotkey action: ${action}`);
     }
   }
 
