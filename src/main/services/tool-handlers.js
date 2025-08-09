@@ -292,6 +292,9 @@ class ToolHandlers {
   }
 
   setGitHubToken(token) {
+    if (typeof token !== 'string' || !token.trim()) {
+      throw new Error('GitHub token must be a non-empty string.');
+    }
     this.store.set('settings.githubToken', token);
     this.initializeGitHub();
   }
