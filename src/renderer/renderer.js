@@ -454,6 +454,11 @@ class MaiBuddyRenderer {
     document.getElementById(`${tabName}Tab`).classList.add('active');
   }
 
+  showSettings() {
+    this.loadSettingsIntoForm();
+    this.settingsModal.classList.remove('hidden');
+  }
+
   showMCPManager() {
     this.loadMCPConnections();
     this.mcpModal.classList.remove('hidden');
