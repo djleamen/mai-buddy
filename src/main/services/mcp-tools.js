@@ -221,7 +221,7 @@ class MCPTools {
         },
         required: ['channel', 'text']
       },
-      handler: async ({ channel, text, /* thread_ts */ }) => {
+      handler: async ({ channel, text }) => {
         return { 
           success: true, 
           message: `Would send message to ${channel}: "${text}"`,
