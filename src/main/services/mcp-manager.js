@@ -775,7 +775,7 @@ class MCPManager {
     
     return connections;
   }
-   getConnectionTypeFromEndpoint(endpoint) {
+  getConnectionTypeFromEndpoint(endpoint) {
     if (endpoint.includes('filesystem')) return 'filesystem';
     if (endpoint.includes('terminal')) return 'terminal';
     if (endpoint.includes('calendar')) return 'calendar';

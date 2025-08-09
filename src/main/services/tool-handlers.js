@@ -33,24 +33,24 @@ class ToolHandlers {
     }
 
     switch (toolName) {
-      case 'list_repositories':
-        return await this.listRepositories(parameters);
-      case 'create_issue':
-        return await this.createIssue(parameters);
-      case 'get_repository':
-        return await this.getRepository(parameters);
-      case 'list_issues':
-        return await this.listIssues(parameters);
-      case 'create_pull_request':
-        return await this.createPullRequest(parameters);
-      case 'search_code':
-        return await this.searchCode(parameters);
-      case 'get_user':
-        return await this.getUser(parameters);
-      case 'list_commits':
-        return await this.listCommits(parameters);
-      default:
-        throw new Error(`Unknown GitHub tool: ${toolName}`);
+    case 'list_repositories':
+      return await this.listRepositories(parameters);
+    case 'create_issue':
+      return await this.createIssue(parameters);
+    case 'get_repository':
+      return await this.getRepository(parameters);
+    case 'list_issues':
+      return await this.listIssues(parameters);
+    case 'create_pull_request':
+      return await this.createPullRequest(parameters);
+    case 'search_code':
+      return await this.searchCode(parameters);
+    case 'get_user':
+      return await this.getUser(parameters);
+    case 'list_commits':
+      return await this.listCommits(parameters);
+    default:
+      throw new Error(`Unknown GitHub tool: ${toolName}`);
     }
   }
 
