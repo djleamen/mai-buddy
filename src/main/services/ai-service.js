@@ -354,7 +354,7 @@ User message: ${message}`;
         }
         
         // Look for other absolute paths
-        const absolutePathMatch = message.match(/\/[\w.-\/]+/);
+        const absolutePathMatch = message.match(/\/[\w.-/]+/);
         if (absolutePathMatch && !absolutePathMatch[0].includes(this.userHomePath)) {
           path = absolutePathMatch[0];
         }
