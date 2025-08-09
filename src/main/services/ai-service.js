@@ -323,7 +323,7 @@ User message: ${message}`;
       let path = this.userHomePath; // Default to user home
       
       // First check for explicit full paths starting with the user home path
-      const userPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\/\\w.-]*`, 'i'));
+      const userPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/\\w.-]*`, 'i'));
       if (userPathMatch) {
         path = userPathMatch[0];
         // Ensure it ends without a slash (unless it's just the home directory)
