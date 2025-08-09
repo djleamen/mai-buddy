@@ -62,7 +62,7 @@ class MCPServer {
     });
 
     // Handle ping requests
-    this.requestHandlers.set('ping', async (params, client) => {
+    this.requestHandlers.set('ping', async (params) => {
       return { pong: true, timestamp: new Date().toISOString() };
     });
   }
