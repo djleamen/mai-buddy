@@ -407,7 +407,7 @@ User message: ${message}`;
       
       // Look for absolute paths
       if (!path) {
-        const absolutePathMatch = message.match(/\/[\w.-\/]+/);
+        const absolutePathMatch = message.match(/\/[\w.-/]+/);
         if (absolutePathMatch) {
           path = absolutePathMatch[0];
         }
