@@ -17,7 +17,7 @@ Mai Buddy is a highly customizable, personal AI agent that runs as a desktop app
 - **Real-time Speech Recognition**: Voice input support
 
 ### 🔌 MCP Connections (30+ Integrations)
-- **Development**: GitHub, GitLab, VS Code, Docker
+- **Development**: GitHub ✨, GitLab, VS Code, Docker
 - **Communication**: Slack, Discord, Microsoft Teams
 - **Productivity**: Notion, Trello, Asana
 - **Cloud Services**: AWS, Google Cloud, Azure, DigitalOcean
@@ -119,26 +119,6 @@ Mai Buddy supports the Model Context Protocol for extending functionality. Avail
 
 ## Development
 
-### Project Structure
-```
-mai-buddy/
-├── src/
-│   ├── main/
-│   │   ├── main.js              # Electron main process
-│   │   └── services/
-│   │       ├── ai-service.js    # OpenAI integration
-│   │       ├── voice-service.js # ElevenLabs & speech recognition
-│   │       ├── mcp-manager.js   # MCP connection management
-│   │       └── hotkey-manager.js # Global hotkey handling
-│   └── renderer/
-│       ├── index.html           # UI layout
-│       ├── styles.css           # Styling
-│       └── renderer.js          # Frontend logic
-├── assets/                      # Icons and images
-├── package.json
-└── README.md
-```
-
 ### Building
 
 ```bash
@@ -196,9 +176,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- 📧 Email: support@mai-buddy.com
+- 📧 Email: dilara_leamen@icloud.com
 - 🐛 Issues: [GitHub Issues](https://github.com/djleamen/mai-buddy/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/djleamen/mai-buddy/discussions)
 
 ## Roadmap
 

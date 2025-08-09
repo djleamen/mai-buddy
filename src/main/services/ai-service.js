@@ -1,7 +1,7 @@
 /*
-This file contains the AIService class, which handles communication with the OpenAI API 
-and manages conversation history. Note that this file assumes macOS file paths.
-*/
+ * This file contains the AIService class, which handles communication with the OpenAI API
+ * and manages conversation history. Note that this file assumes macOS file paths.
+ */
 
 const OpenAI = require('openai');
 const Store = require('electron-store');
@@ -85,14 +85,12 @@ class AIService {
 
       const response = completion.choices[0].message.content;
 
-      // Add assistant response to history
       this.conversationHistory.push({
         role: 'assistant',
         content: response,
         timestamp: new Date().toISOString()
       });
 
-      // Save conversation history
       this.saveConversationHistory();
 
       return {
@@ -113,12 +111,10 @@ class AIService {
       return await this.processMessage(message);
     }
 
-    // Get available MCP connections
     const connections = mcpManager.getConnections();
     const activeConnections = connections.filter(conn => conn.status === 'connected');
 
     if (activeConnections.length === 0) {
-      // No active MCP connections, process normally
       return await this.processMessage(message);
     }
 
@@ -130,7 +126,6 @@ class AIService {
       category: conn.category
     }));
 
-    // Get available tools for each connection
     const availableTools = {};
     for (const conn of activeConnections) {
       try {
@@ -147,7 +142,6 @@ class AIService {
       }
     }
 
-    // Check if the user message requires tool execution
     const toolRequest = this.analyzeToolRequest(message, availableTools);
     
     if (toolRequest) {
@@ -159,7 +153,6 @@ class AIService {
           toolRequest.parameters
         );
 
-        // Create an enhanced prompt with the actual tool result
         const enhancedPrompt = `${this.systemPrompt}
 
 I just executed the following tool for you:
@@ -233,7 +226,6 @@ User message: ${message}`;
       return response;
     } catch (error) {
       console.error('Error in MCP-enhanced processing:', error);
-      // Fall back to regular processing
       return await this.processMessage(message);
     }
   }
@@ -242,62 +234,52 @@ User message: ${message}`;
     const lowerMessage = message.toLowerCase();
     
     // Command execution patterns
+
     if (lowerMessage.includes('run ') || lowerMessage.includes('execute ') || 
         lowerMessage.includes('command ') || lowerMessage.includes('./') ||
         lowerMessage.includes('.sh') || lowerMessage.includes('/')) {
       
-      // Extract command from message
       let command = '';
       
-      // Look for absolute path scripts (starting with /)
       const absolutePathMatch = message.match(/[/][\w.-/]+\.sh/);
       if (absolutePathMatch) {
         command = absolutePathMatch[0];
       }
       
-      // Look for scripts starting with ./
       const scriptMatch = message.match(/\.\/[\w.-]+/);
       if (scriptMatch && !command) {
         command = scriptMatch[0];
       }
       
-      // Look for specific script names and try common locations
       const scriptNameMatch = message.match(/\b([\w.-]+\.sh)\b/);
       if (scriptNameMatch && !command) {
         const scriptName = scriptNameMatch[1];
         
-        // Try common locations for the script
         const commonPaths = [
-          `${this.userHomePath}/${scriptName}`,  // User home directory
-          `/${scriptName}`,                      // Root directory
-          `./${scriptName}`,                     // Current directory
-          `/usr/local/bin/${scriptName}`,        // Local bin
-          `/opt/homebrew/bin/${scriptName}`      // Homebrew bin
+          `${this.userHomePath}/${scriptName}`, // User home directory
+          `/${scriptName}`, // Root directory
+          `./${scriptName}`, // Current directory
+          `/usr/local/bin/${scriptName}`, // Local bin
+          `/opt/homebrew/bin/${scriptName}` // Homebrew bin
         ];
         
-        // For now, assume it's in the user's home directory if it's a common script like brew.sh
-        if (scriptName === 'brew.sh') {
-          command = `${this.userHomePath}/${scriptName}`;
-        } else if (lowerMessage.includes('root')) {
+        if (lowerMessage.includes('root')) {
           command = `/${scriptName}`;
         } else {
           command = `${this.userHomePath}/${scriptName}`; // Default to user home
         }
       }
       
-      // Look for quoted commands
       const quotedMatch = message.match(/['"`]([^'"`]+)['"`]/);
       if (quotedMatch && !command) {
         command = quotedMatch[1];
       }
       
-      // Look for commands after "run" or "execute"
       const runMatch = message.match(/(?:run|execute)\s+(.+?)(?:\s|$)/i);
       if (runMatch && !command) {
         command = runMatch[1].trim();
       }
       
-      // If we found a command and have a terminal connection
       const terminalTools = availableTools['Local Terminal'];
       if (command && terminalTools) {
         const executeTool = terminalTools.find(t => t.name === 'execute_command');
@@ -319,8 +301,7 @@ User message: ${message}`;
         lowerMessage.includes('list what') ||
         (lowerMessage.includes('list') && lowerMessage.includes(this.userHomePath.toLowerCase()))) {
       
-      // Extract path if mentioned
-      let path = this.userHomePath; // Default to user home
+      let path = this.userHomePath;
       
       // First check for explicit full paths starting with the user home path
       const userPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/\\w.-]*`, 'i'));
@@ -353,7 +334,6 @@ User message: ${message}`;
           path = process.cwd();
         }
         
-        // Look for other absolute paths
         const absolutePathMatch = message.match(/\/[\w.-/]+/);
         if (absolutePathMatch && !absolutePathMatch[0].includes(this.userHomePath)) {
           path = absolutePathMatch[0];
@@ -379,10 +359,8 @@ User message: ${message}`;
         (lowerMessage.includes('what\'s in') && (lowerMessage.includes('.txt') || lowerMessage.includes('.js') || lowerMessage.includes('.json') || lowerMessage.includes('.md'))) ||
         lowerMessage.includes('show me the content')) {
       
-      // Extract file path - handle both absolute and relative paths
       let path = '';
       
-      // First check for explicit full paths that user provided
       const explicitPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/\\w.-]*`, 'i'));
       if (explicitPathMatch) {
         path = explicitPathMatch[0];
@@ -405,7 +383,6 @@ User message: ${message}`;
         }
       }
       
-      // Look for absolute paths
       if (!path) {
         const absolutePathMatch = message.match(/\/[\w.-/]+/);
         if (absolutePathMatch) {
@@ -413,12 +390,10 @@ User message: ${message}`;
         }
       }
       
-      // Look for relative paths or file references
       if (!path) {
         const pathMatch = message.match(/(?:read|in)\s+(?:the\s+)?(?:file\s+)?([^\s]+)/i);
         if (pathMatch) {
           path = pathMatch[1];
-          // If it mentions root, prepend user directory
           if (lowerMessage.includes('root') && !path.startsWith('/')) {
             path = `${this.userHomePath}/${path}`;
           }
@@ -460,7 +435,6 @@ User message: ${message}`;
         content = 'Hi, I\'m Mai';
       }
       
-      // Look for explicit file paths
       const fileMatch = message.match(/file\s+(?:called\s+|named\s+)?([^\s]+)/i);
       if (fileMatch && !path) {
         const fileName = fileMatch[1];
@@ -471,7 +445,6 @@ User message: ${message}`;
         }
       }
       
-      // Look for content in quotes
       const contentMatch = message.match(/['"`]([^'"`]+)['"`]/);
       if (contentMatch && !content) {
         content = contentMatch[1];

@@ -1,3 +1,9 @@
+/*
+ * HotkeyManager is responsible for managing global hotkeys in the application.
+ * It allows registering, unregistering, and handling hotkey actions.
+ * Feel free to customize hotkeys and their actions as needed.
+ */
+
 const { globalShortcut } = require('electron');
 const Store = require('electron-store');
 
@@ -25,13 +31,11 @@ class HotkeyManager {
 
   async registerHotkey(action, shortcut, callback = null) {
     try {
-      // Unregister existing hotkey for this action
       if (this.registeredHotkeys.has(action)) {
         const existingShortcut = this.registeredHotkeys.get(action);
         globalShortcut.unregister(existingShortcut);
       }
 
-      // Register new hotkey
       const success = globalShortcut.register(shortcut, () => {
         if (callback) {
           callback(action);
@@ -100,15 +104,12 @@ class HotkeyManager {
   }
 
   resetToDefaults() {
-    // Unregister all current hotkeys
     for (const [action] of this.registeredHotkeys) {
       this.unregisterHotkey(action);
     }
 
-    // Clear custom hotkeys
     this.store.delete('customHotkeys');
 
-    // Re-register default hotkeys
     for (const [action, shortcut] of Object.entries(this.defaultHotkeys)) {
       this.registerHotkey(action, shortcut);
     }
@@ -123,12 +124,10 @@ class HotkeyManager {
     const key = parts[parts.length - 1];
     const modifiers = parts.slice(0, -1);
 
-    // Check if key is valid
     if (!validKeys.test(key)) {
       return false;
     }
 
-    // Check if modifiers are valid
     for (const modifier of modifiers) {
       if (!validModifiers.includes(modifier)) {
         return false;
@@ -164,7 +163,6 @@ class HotkeyManager {
   }
 
   cleanup() {
-    // Unregister all hotkeys
     for (const [action] of this.registeredHotkeys) {
       this.unregisterHotkey(action);
     }

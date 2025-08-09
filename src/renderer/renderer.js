@@ -1,3 +1,7 @@
+/*
+* Initializes the application and manages the main window, tray, and services.
+*/
+
 const { ipcRenderer } = require('electron');
 
 class MaiBuddyRenderer {
@@ -6,7 +10,7 @@ class MaiBuddyRenderer {
     this.currentSettings = {};
     this.mcpConnections = [];
     this.messages = [];
-    this.isUserScrolledUp = false; // Initialize scroll state
+    this.isUserScrolledUp = false;
     
     this.initializeElements();
     this.setupEventListeners();
@@ -44,7 +48,6 @@ class MaiBuddyRenderer {
 
   setupEventListeners() {
     // Title bar buttons
-    this.settingsBtn.addEventListener('click', () => this.showSettings());
     this.minimizeBtn.addEventListener('click', () => this.hideWindow());
     
     // MCP button
@@ -68,31 +71,24 @@ class MaiBuddyRenderer {
     // Scroll to bottom button
     this.scrollToBottomBtn.addEventListener('click', () => this.scrollToBottom());
     
-    // Chat scrolling enhancements
     this.setupChatScrolling();
     
-    // Settings modal
     this.setupSettingsModal();
     
-    // MCP modal
     this.setupMCPModal();
     
-    // Auto-resize textarea
     this.autoResizeTextarea();
   }
 
   setupChatScrolling() {
-    // Ensure elements exist
     if (!this.chatMessages || !this.scrollToBottomBtn) {
       return;
     }
 
-    // Add scroll event listener for better scroll behavior
     this.chatMessages.addEventListener('scroll', () => {
       this.handleChatScroll();
     });
 
-    // Add keyboard navigation for chat
     document.addEventListener('keydown', (e) => {
       if (e.target === this.messageInput) return; // Don't interfere with input
       
@@ -120,7 +116,6 @@ class MaiBuddyRenderer {
       }
     });
 
-    // Initial scroll state check
     this.handleChatScroll();
   }
 
@@ -130,10 +125,8 @@ class MaiBuddyRenderer {
     const { scrollTop, scrollHeight, clientHeight } = this.chatMessages;
     const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50;
     
-    // Store scroll position for auto-scroll decisions
     this.isUserScrolledUp = !isNearBottom;
     
-    // Show/hide scroll to bottom button
     if (this.isUserScrolledUp && scrollHeight > clientHeight) {
       this.scrollToBottomBtn.classList.remove('hidden');
     } else {
@@ -158,13 +151,11 @@ class MaiBuddyRenderer {
     cancelBtn.addEventListener('click', () => this.hideSettings());
     saveBtn.addEventListener('click', () => this.saveSettings());
     
-    // Tab switching
     const tabBtns = document.querySelectorAll('.tab-btn');
     tabBtns.forEach(btn => {
       btn.addEventListener('click', () => this.switchTab(btn.dataset.tab));
     });
     
-    // Range input updates
     const stabilitySlider = document.getElementById('voiceStability');
     const stabilityValue = document.getElementById('stabilityValue');
     
@@ -185,7 +176,6 @@ class MaiBuddyRenderer {
 
   async loadInitialData() {
     try {
-      // Load settings with retry logic
       let attempts = 0;
       const maxAttempts = 3;
       
@@ -207,7 +197,6 @@ class MaiBuddyRenderer {
       
       this.updateConnectionStatus();
       
-      // Load MCP connections
       try {
         this.mcpConnections = await ipcRenderer.invoke('get-mcp-connections');
         this.updateMCPCount();
@@ -231,7 +220,6 @@ class MaiBuddyRenderer {
           <button class="quick-action" onclick="renderer.insertQuickMessage('What can you help me with?')">What can you do?</button>
           <button class="quick-action" onclick="renderer.insertQuickMessage('Show me my MCP connections')">MCP Status</button>
           <button class="quick-action" onclick="renderer.insertQuickMessage('Help me set up voice commands')">Voice Setup</button>
-          <button class="quick-action" onclick="renderer.showSettings()">Settings</button>
         </div>
       </div>
     `;
@@ -248,19 +236,15 @@ class MaiBuddyRenderer {
     const message = this.messageInput.value.trim();
     if (!message) return;
     
-    // Add user message to chat
     this.addMessage('user', message);
     this.messageInput.value = '';
     this.autoResizeTextarea();
     
-    // Show typing indicator
     this.showTypingIndicator();
     
     try {
-      // Send message to main process
       const response = await ipcRenderer.invoke('send-message', message);
       
-      // Remove typing indicator
       this.hideTypingIndicator();
       
       if (response.error) {
@@ -326,7 +310,6 @@ class MaiBuddyRenderer {
     messageDiv.appendChild(contentDiv);
     messageDiv.appendChild(timestampDiv);
     
-    // Remove welcome message if it exists
     const welcomeMessage = this.chatMessages.querySelector('.welcome-message');
     if (welcomeMessage) {
       welcomeMessage.remove();
@@ -334,12 +317,10 @@ class MaiBuddyRenderer {
     
     this.chatMessages.appendChild(messageDiv);
     
-    // Smart scroll behavior - only auto-scroll if user hasn't manually scrolled up
     if (!this.isUserScrolledUp) {
       this.scrollToBottom();
     }
     
-    // Store message
     this.messages.push({ role, content, timestamp: new Date().toISOString() });
   }
 
@@ -374,7 +355,6 @@ class MaiBuddyRenderer {
     // Reset user scroll state when we programmatically scroll to bottom
     this.isUserScrolledUp = false;
     
-    // Update button visibility after scroll
     setTimeout(() => {
       this.handleChatScroll();
     }, 100);
@@ -391,7 +371,6 @@ class MaiBuddyRenderer {
     if (this.isVoiceActive) {
       this.voiceBtn.classList.add('active');
       this.statusText.textContent = 'Listening...';
-      // Here you would start voice recognition
     } else {
       this.voiceBtn.classList.remove('active');
       this.statusText.textContent = 'Connected';
@@ -413,11 +392,6 @@ class MaiBuddyRenderer {
   updateMCPCount() {
     const activeConnections = this.mcpConnections.filter(conn => conn.status === 'connected').length;
     this.mcpCount.textContent = activeConnections;
-  }
-
-  showSettings() {
-    this.loadSettingsIntoForm();
-    this.settingsModal.classList.remove('hidden');
   }
 
   hideSettings() {
@@ -461,7 +435,6 @@ class MaiBuddyRenderer {
       this.updateConnectionStatus();
       this.hideSettings();
       
-      // Show success message
       this.addMessage('assistant', 'Settings saved successfully! 🎉');
       
     } catch (error) {
@@ -621,7 +594,6 @@ class MaiBuddyRenderer {
         this.showNotification(`Connection test failed: ${result.result?.message || result.error}`, 'error');
       }
 
-      // Reload connections to update status
       await this.loadMCPConnections();
 
     } catch (error) {
@@ -642,7 +614,6 @@ class MaiBuddyRenderer {
         const connection = this.mcpConnections.find(c => c.id === connectionId);
         const tools = result.tools;
 
-        // Create tools modal
         const modal = document.createElement('div');
         modal.className = 'modal';
         modal.innerHTML = `
@@ -712,7 +683,6 @@ class MaiBuddyRenderer {
       const result = await ipcRenderer.invoke('mcp-execute-tool', connectionId, toolName, parameters);
       
       if (result.success) {
-        // Show result in a modal
         const modal = document.createElement('div');
         modal.className = 'modal';
         modal.innerHTML = `
@@ -780,7 +750,7 @@ class MaiBuddyRenderer {
     alert('Add MCP Connection feature coming soon!');
   }
 
-  editMCPConnection(/* connectionId */) {
+  editMCPConnection() {
     // This would open a dialog to edit MCP connections
     alert('Edit MCP Connection feature coming soon!');
   }
@@ -801,10 +771,8 @@ document.addEventListener('DOMContentLoaded', () => {
   window.renderer = new MaiBuddyRenderer();
 });
 
-// Handle keyboard shortcuts
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    // Hide modals or window
     if (!document.querySelector('.modal.hidden')) {
       document.querySelectorAll('.modal').forEach(modal => {
         modal.classList.add('hidden');

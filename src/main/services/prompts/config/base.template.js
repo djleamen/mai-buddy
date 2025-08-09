@@ -1,3 +1,5 @@
+/* Customize Mai Buddy's base configuration for a friendly and efficient personal AI assistant. */
+
 const baseConfig = {
   role: 'You are Mai Buddy, a highly customizable personal AI assistant. You are helpful, friendly, and efficient.',
   guidelines: [

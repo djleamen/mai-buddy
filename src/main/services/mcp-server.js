@@ -1,11 +1,12 @@
+/*
+ * Simple MCP Server for testing and local tool execution
+ * Implements basic Model Context Protocol over WebSocket
+ */
+
 const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const { MCPTools } = require('./mcp-tools');
 
-/**
- * Simple MCP Server for testing and local tool execution
- * Implements basic Model Context Protocol over WebSocket
- */
 class MCPServer {
   constructor(port = 3001) {
     this.port = port;
@@ -17,14 +18,12 @@ class MCPServer {
   }
 
   setupRequestHandlers() {
-    // Handle tool listing requests
     this.requestHandlers.set('tools/list', async (params) => {
       const connectionType = params.connection_type || 'filesystem';
       const tools = this.tools.getToolsListForConnection(connectionType);
       return { tools };
     });
 
-    // Handle tool execution requests
     this.requestHandlers.set('tools/call', async (params) => {
       const { connection_type, tool_name, arguments: toolArgs } = params;
       
@@ -40,7 +39,6 @@ class MCPServer {
       }
     });
 
-    // Handle connection info requests
     this.requestHandlers.set('connection/info', async () => {
       return {
         server: 'Mai Buddy MCP Server',
@@ -61,7 +59,6 @@ class MCPServer {
       };
     });
 
-    // Handle ping requests
     this.requestHandlers.set('ping', async (params) => {
       return { pong: true, timestamp: new Date().toISOString() };
     });
@@ -85,7 +82,6 @@ class MCPServer {
       this.clients.set(clientId, client);
       console.log(`📡 MCP Client connected: ${clientId} from ${client.ip}`);
 
-      // Send welcome message
       this.sendMessage(client, {
         jsonrpc: '2.0',
         method: 'server/connected',
@@ -198,12 +194,10 @@ class MCPServer {
     }));
   }
 
-  // Register custom tools
   registerTool(connectionType, toolName, toolDefinition) {
     this.tools.registerTool(connectionType, toolName, toolDefinition);
   }
 
-  // Get available tools for a connection type
   getToolsForConnection(connectionType) {
     return this.tools.getToolsListForConnection(connectionType);
   }

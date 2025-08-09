@@ -1,3 +1,8 @@
+/*
+ * Work in progress file to manage MCP connections and tools.
+ * Only functioning MCP connections are GitHub and system integration as of August 2025
+ */
+
 const Store = require('electron-store');
 const { v4: uuidv4 } = require('uuid');
 const WebSocket = require('ws');
@@ -16,7 +21,6 @@ class MCPManager {
   }
 
   async initialize() {
-    // Start local MCP server
     await this.startLocalServer();
     
     const savedConnections = this.store.get('mcpConnections', []);
@@ -29,10 +33,10 @@ class MCPManager {
       }
     }
 
-    // Auto-connect to local filesystem and terminal by default
     await this.addDefaultLocalConnections();
   }
 
+  // Placeholders for MCP connections
   getAvailableMCPConnections() {
     return [
       // Development & Code
@@ -135,17 +139,6 @@ class MCPManager {
         authType: 'token',
         capabilities: ['board-management', 'card-creation', 'workflow-automation']
       },
-      {
-        id: 'asana',
-        name: 'Asana',
-        description: 'Asana project and task management',
-        category: 'Productivity',
-        type: 'api',
-        endpoint: 'https://app.asana.com/api/1.0',
-        requiresAuth: true,
-        authType: 'token',
-        capabilities: ['project-management', 'task-tracking', 'team-collaboration']
-      },
 
       // Cloud Services
       {
@@ -180,17 +173,6 @@ class MCPManager {
         requiresAuth: true,
         authType: 'service-principal',
         capabilities: ['virtual-machines', 'storage-accounts', 'cognitive-services']
-      },
-      {
-        id: 'digitalocean',
-        name: 'DigitalOcean',
-        description: 'DigitalOcean cloud infrastructure',
-        category: 'Cloud',
-        type: 'api',
-        endpoint: 'https://api.digitalocean.com/v2',
-        requiresAuth: true,
-        authType: 'token',
-        capabilities: ['droplet-management', 'spaces-storage', 'kubernetes']
       },
 
       // Databases
@@ -272,6 +254,28 @@ class MCPManager {
         authType: 'token',
         capabilities: ['model-inference', 'image-generation', 'video-processing']
       },
+      {
+        id: 'ollama',
+        name: 'Ollama',
+        description: 'Ollama AI model hosting',
+        category: 'AI/ML',
+        type: 'api',
+        endpoint: 'https://api.ollama.com/v1',
+        requiresAuth: true,
+        authType: 'token',
+        capabilities: ['model-inference', 'image-generation', 'video-processing']
+      },
+      {
+        id: 'openai',
+        name: 'OpenAI',
+        description: 'OpenAI API for language models',
+        category: 'AI/ML',
+        type: 'api',
+        endpoint: 'https://api.openai.com/v1',
+        requiresAuth: true,
+        authType: 'token',
+        capabilities: ['model-inference', 'text-generation', 'conversation']
+      },
 
       // Finance & Business
       {
@@ -286,17 +290,6 @@ class MCPManager {
         capabilities: ['payment-processing', 'subscription-management', 'financial-reporting']
       },
       {
-        id: 'plaid',
-        name: 'Plaid',
-        description: 'Plaid financial data API',
-        category: 'Finance',
-        type: 'api',
-        endpoint: 'https://api.plaid.com',
-        requiresAuth: true,
-        authType: 'token',
-        capabilities: ['bank-account-access', 'transaction-data', 'financial-insights']
-      },
-      {
         id: 'salesforce',
         name: 'Salesforce',
         description: 'Salesforce CRM integration',
@@ -306,6 +299,17 @@ class MCPManager {
         requiresAuth: true,
         authType: 'oauth',
         capabilities: ['crm-management', 'lead-tracking', 'sales-automation']
+      },
+      {
+        id: 'shopify',
+        name: 'Shopify',
+        description: 'Shopify e-commerce platform',
+        category: 'Business',
+        type: 'api',
+        endpoint: 'https://api.shopify.com/v1',
+        requiresAuth: true,
+        authType: 'oauth',
+        capabilities: ['product-management', 'order-processing', 'customer-management']
       },
 
       // Content & Media
@@ -318,7 +322,6 @@ class MCPManager {
         endpoint: 'https://www.googleapis.com/youtube/v3',
         requiresAuth: true,
         authType: 'oauth',
-        capabilities: ['video-upload', 'analytics', 'channel-management']
       },
       {
         id: 'spotify',
@@ -503,7 +506,6 @@ class MCPManager {
   }
 
   async connectToLocal(connection) {
-    // Local connections are always available
     connection.status = 'connected';
     connection.lastConnected = new Date().toISOString();
   }
@@ -621,8 +623,6 @@ class MCPManager {
     throw new Error('Unsupported connection type for MCP messaging');
   }
 
-  // New methods for enhanced MCP functionality
-
   async startLocalServer() {
     if (!this.isLocalServerRunning && !this.localServer) {
       try {
@@ -696,6 +696,11 @@ class MCPManager {
       return await this.tools.executeTool(connectionType, toolName, parameters);
     }
 
+    // For API connections, use the tools directly with connection ID
+    if (connection.type === 'api') {
+      return await this.tools.executeTool(connectionId, toolName, parameters);
+    }
+
     // For other connections, send MCP message
     if (connection.type === 'websocket') {
       return await this.sendMCPMessage(connectionId, {
@@ -708,11 +713,73 @@ class MCPManager {
     throw new Error('Tool execution not supported for this connection type');
   }
 
-  getConnectionTypeFromEndpoint(endpoint) {
+  // Configuration methods for GitHub
+  setGitHubToken(token) {
+    this.tools.setGitHubToken(token);
+    
+    const githubConnection = Array.from(this.connections.values())
+      .find(conn => conn.id === 'github');
+    
+    if (githubConnection) {
+      githubConnection.apiKey = token;
+      this.saveConnections();
+    }
+  }
+
+  async connectGitHub(token) {
+    try {
+      this.setGitHubToken(token);
+      
+      const { Octokit } = require('@octokit/rest');
+      const client = new Octokit({ auth: token });
+      await client.rest.users.getAuthenticated();
+      
+      const githubConnectionData = {
+        id: 'github',
+        name: 'GitHub',
+        description: 'GitHub API integration',
+        category: 'Development',
+        type: 'api',
+        endpoint: 'https://api.github.com',
+        requiresAuth: true,
+        authType: 'token',
+        apiKey: token,
+        capabilities: ['repository-access', 'issue-management', 'code-search']
+      };
+      
+      await this.addConnection(githubConnectionData);
+      return { success: true, message: 'GitHub connected successfully' };
+      
+    } catch (error) {
+      return { success: false, error: `GitHub connection failed: ${error.message}` };
+    }
+  }
+
+  // Get connection status and info
+  getConnectionInfo() {
+    const connections = [];
+    
+    for (const connection of this.connections.values()) {
+      connections.push({
+        id: connection.id,
+        name: connection.name,
+        category: connection.category,
+        type: connection.type,
+        status: connection.status,
+        lastConnected: connection.lastConnected,
+        capabilities: connection.capabilities,
+        requiresAuth: connection.requiresAuth,
+        authType: connection.authType
+      });
+    }
+    
+    return connections;
+  }
+   getConnectionTypeFromEndpoint(endpoint) {
     if (endpoint.includes('filesystem')) return 'filesystem';
     if (endpoint.includes('terminal')) return 'terminal';
     if (endpoint.includes('calendar')) return 'calendar';
-    return 'filesystem'; // default
+    return 'filesystem';
   }
 
   async getAvailableTools(connectionId) {
@@ -722,13 +789,11 @@ class MCPManager {
       throw new Error('Connection not found');
     }
 
-    // For local connections, get tools from MCPTools
     if (connection.type === 'local') {
       const connectionType = this.getConnectionTypeFromEndpoint(connection.endpoint);
       return this.tools.getToolsListForConnection(connectionType);
     }
 
-    // For remote connections, query via MCP
     if (connection.type === 'websocket' && connection.status === 'connected') {
       try {
         const result = await this.sendMCPMessage(connectionId, {
@@ -760,7 +825,6 @@ class MCPManager {
       }
     }
 
-    // For other connection types, use existing test method
     return await this.testConnection(connectionId);
   }
 
@@ -775,13 +839,10 @@ class MCPManager {
     };
 
     for (const connection of this.connections.values()) {
-      // Count by status
       stats[connection.status] = (stats[connection.status] || 0) + 1;
       
-      // Count by type
       stats.byType[connection.type] = (stats.byType[connection.type] || 0) + 1;
       
-      // Count by category
       stats.byCategory[connection.category] = (stats.byCategory[connection.category] || 0) + 1;
     }
 
@@ -807,12 +868,10 @@ class MCPManager {
   }
 
   async cleanup() {
-    // Disconnect all connections
     for (const connection of this.connections.values()) {
       await this.disconnectConnection(connection);
     }
     
-    // Stop local server
     await this.stopLocalServer();
     
     console.log('🧹 MCP Manager cleanup completed');
