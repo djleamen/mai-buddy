@@ -13,7 +13,11 @@ const execAsync = promisify(exec);
 class MCPTools {
   constructor() {
     this.tools = new Map();
-    this.toolHandlers = new ToolHandlers();
+    try {
+      this.toolHandlers = new ToolHandlers();
+    } catch (err) {
+      throw new Error(`Failed to initialize ToolHandlers in MCPTools constructor: ${err && err.message ? err.message : err}`);
+    }
     this.registerDefaultTools();
   }
 
