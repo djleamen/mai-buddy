@@ -157,7 +157,7 @@ class MCPTools {
         },
         required: ['owner', 'repo', 'title']
       },
-      handler: async ({ owner, repo, title, /* body, labels */ }) => {
+      handler: async ({ owner, repo, title }) => {
         return { 
           success: true, 
           message: `Would create issue "${title}" in ${owner}/${repo}`,
