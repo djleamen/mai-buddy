@@ -200,7 +200,7 @@ class MCPTools {
         },
         required: ['database_id']
       },
-      handler: async ({ database_id, /* filter, sorts */ }) => {
+      handler: async ({ database_id }) => {
         return { 
           success: true, 
           message: `Would query Notion database ${database_id}`,
