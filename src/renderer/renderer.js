@@ -266,6 +266,13 @@ class MaiBuddyRenderer {
       if (response.error) {
         this.addMessage('assistant', `I'm sorry, I encountered an error: ${response.error}`, true);
       } else {
+        // Show tool execution status if applicable
+        if (response.toolExecuted) {
+          this.addToolExecutionMessage(response.toolResult);
+        } else if (response.toolError) {
+          this.addMessage('assistant', `I tried to execute a tool for you, but encountered an error: ${response.toolError}`, true);
+        }
+        
         this.addMessage('assistant', response.response);
       }
       
@@ -274,6 +281,33 @@ class MaiBuddyRenderer {
       this.addMessage('assistant', 'I apologize, but I\'m having trouble processing your request. Please check your API settings.', true);
       console.error('Error sending message:', error);
     }
+  }
+
+  addToolExecutionMessage(toolResult) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message system tool-execution';
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content tool-result';
+    contentDiv.innerHTML = `
+      <div class="tool-header">
+        <span class="tool-icon">🔧</span>
+        <span class="tool-label">Tool Executed</span>
+      </div>
+      <div class="tool-output">
+        <pre>${JSON.stringify(toolResult, null, 2)}</pre>
+      </div>
+    `;
+    
+    const timestampDiv = document.createElement('div');
+    timestampDiv.className = 'message-timestamp';
+    timestampDiv.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    messageDiv.appendChild(contentDiv);
+    messageDiv.appendChild(timestampDiv);
+    
+    this.chatMessages.appendChild(messageDiv);
+    this.scrollToBottom();
   }
 
   addMessage(role, content, isError = false) {
@@ -457,75 +491,296 @@ class MaiBuddyRenderer {
 
   async loadMCPConnections() {
     try {
-      this.mcpConnections = await ipcRenderer.invoke('get-mcp-connections');
-      this.renderMCPConnections();
+      const result = await ipcRenderer.invoke('mcp-get-connections');
+      if (result.success) {
+        this.mcpConnections = result.connections;
+        this.mcpStats = result.stats;
+        this.updateMCPStatus();
+        this.renderMCPConnections();
+      } else {
+        console.error('Error loading MCP connections:', result.error);
+      }
     } catch (error) {
       console.error('Error loading MCP connections:', error);
+    }
+  }
+
+  updateMCPStatus() {
+    if (this.mcpStats) {
+      this.mcpCount.textContent = this.mcpStats.connected;
+      
+      // Update MCP button appearance based on status
+      if (this.mcpStats.connected > 0) {
+        this.mcpBtn.classList.add('active');
+        this.mcpBtn.title = `${this.mcpStats.connected} MCP connections active`;
+      } else {
+        this.mcpBtn.classList.remove('active');
+        this.mcpBtn.title = 'No MCP connections active';
+      }
     }
   }
 
   renderMCPConnections() {
     const container = document.getElementById('mcpConnectionsList');
     
+    if (!container) {
+      console.warn('MCP connections list container not found');
+      return;
+    }
+    
     if (this.mcpConnections.length === 0) {
       container.innerHTML = `
-        <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
-          <p>No MCP connections configured yet.</p>
-          <p>Click "Add Connection" to get started!</p>
+        <div class="empty-state">
+          <div class="empty-icon">🔌</div>
+          <h3>No MCP connections</h3>
+          <p>Connect to external services and tools to extend Mai Buddy's capabilities.</p>
+          <button class="btn btn-primary" onclick="renderer.showAddMCPConnection()">
+            Add Your First Connection
+          </button>
         </div>
       `;
       return;
     }
     
-    container.innerHTML = this.mcpConnections.map(conn => `
-      <div class="mcp-connection-card">
-        <div class="mcp-connection-header">
-          <div class="mcp-connection-info">
-            <h4>${conn.name}</h4>
-            <p>${conn.description}</p>
-          </div>
-          <div class="mcp-connection-status">
-            <div class="status-indicator ${conn.status}"></div>
-            <span>${conn.status}</span>
-          </div>
-        </div>
-        <div class="mcp-connection-actions">
-          <button onclick="renderer.testMCPConnection('${conn.id}')">Test</button>
-          <button onclick="renderer.editMCPConnection('${conn.id}')">Edit</button>
-          <button onclick="renderer.removeMCPConnection('${conn.id}')">Remove</button>
+    // Group connections by category
+    const groupedConnections = this.mcpConnections.reduce((groups, conn) => {
+      const category = conn.category || 'Other';
+      if (!groups[category]) groups[category] = [];
+      groups[category].push(conn);
+      return groups;
+    }, {});
+    
+    container.innerHTML = Object.entries(groupedConnections).map(([category, connections]) => `
+      <div class="mcp-category">
+        <h3 class="mcp-category-title">${category}</h3>
+        <div class="mcp-connections-grid">
+          ${connections.map(conn => `
+            <div class="mcp-connection-card ${conn.status}">
+              <div class="mcp-connection-header">
+                <div class="mcp-connection-info">
+                  <h4>${conn.name}</h4>
+                  <p>${conn.description}</p>
+                  ${conn.capabilities ? `
+                    <div class="mcp-capabilities">
+                      ${conn.capabilities.slice(0, 3).map(cap => `
+                        <span class="capability-tag">${cap}</span>
+                      `).join('')}
+                      ${conn.capabilities.length > 3 ? `<span class="capability-more">+${conn.capabilities.length - 3}</span>` : ''}
+                    </div>
+                  ` : ''}
+                </div>
+                <div class="mcp-connection-status">
+                  <div class="status-indicator ${conn.status}" title="${conn.status}"></div>
+                  ${conn.lastConnected ? `<small>${new Date(conn.lastConnected).toLocaleString()}</small>` : ''}
+                </div>
+              </div>
+              <div class="mcp-connection-actions">
+                <button class="btn btn-sm" onclick="renderer.testMCPConnection('${conn.id}')" title="Test connection">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M11,16.5L6.5,12L7.91,10.59L11,13.67L16.59,8.09L18,9.5L11,16.5Z"/>
+                  </svg>
+                  Test
+                </button>
+                <button class="btn btn-sm" onclick="renderer.showMCPTools('${conn.id}')" title="View available tools">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M22.7,19L13.6,9.9C14.5,7.6 14,4.9 12.1,3C10.1,1 7.1,0.6 4.7,1.7L9,6L6,9L1.6,4.7C0.4,7.1 0.9,10.1 2.9,12.1C4.8,14 7.5,14.5 9.8,13.6L18.9,22.7C19.3,23.1 19.9,23.1 20.3,22.7L22.7,20.3C23.1,19.9 23.1,19.3 22.7,19Z"/>
+                  </svg>
+                  Tools
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="renderer.removeMCPConnection('${conn.id}')" title="Remove connection">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                  </svg>
+                  Remove
+                </button>
+              </div>
+            </div>
+          `).join('')}
         </div>
       </div>
     `).join('');
   }
 
+  async showAddMCPConnection() {
+    // TODO: Implement add connection dialog
+    alert('Add MCP Connection feature coming soon!');
+  }
+
   async testMCPConnection(connectionId) {
     try {
-      const result = await ipcRenderer.invoke('test-mcp-connection', connectionId);
-      alert(result.success ? 'Connection successful!' : `Connection failed: ${result.message}`);
-      this.loadMCPConnections(); // Refresh the list
+      const button = event.target.closest('button');
+      button.dataset.originalText = button.innerHTML;
+      button.innerHTML = '<span class="spinner"></span> Testing...';
+      button.disabled = true;
+
+      const result = await ipcRenderer.invoke('mcp-test-connection', connectionId);
+      
+      if (result.success && result.result.success) {
+        this.showNotification('Connection test successful!', 'success');
+      } else {
+        this.showNotification(`Connection test failed: ${result.result?.message || result.error}`, 'error');
+      }
+
+      // Reload connections to update status
+      await this.loadMCPConnections();
+
     } catch (error) {
-      alert('Error testing connection: ' + error.message);
+      console.error('Error testing MCP connection:', error);
+      this.showNotification('Connection test failed', 'error');
+    } finally {
+      const button = event.target.closest('button');
+      button.innerHTML = button.dataset.originalText;
+      button.disabled = false;
+    }
+  }
+
+  async showMCPTools(connectionId) {
+    try {
+      const result = await ipcRenderer.invoke('mcp-get-tools', connectionId);
+      
+      if (result.success) {
+        const connection = this.mcpConnections.find(c => c.id === connectionId);
+        const tools = result.tools;
+
+        // Create tools modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+          <div class="modal-content">
+            <div class="modal-header">
+              <h2>Available Tools - ${connection?.name}</h2>
+              <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+            </div>
+            <div class="modal-body">
+              ${tools.length === 0 ? `
+                <div class="empty-state">
+                  <p>No tools available for this connection.</p>
+                </div>
+              ` : `
+                <div class="tools-list">
+                  ${tools.map(tool => `
+                    <div class="tool-card">
+                      <h4>${tool.name}</h4>
+                      <p>${tool.description}</p>
+                      ${tool.parameters ? `
+                        <details>
+                          <summary>Parameters</summary>
+                          <pre class="tool-parameters">${JSON.stringify(tool.parameters, null, 2)}</pre>
+                        </details>
+                      ` : ''}
+                      <button class="btn btn-sm" onclick="renderer.executeMCPTool('${connectionId}', '${tool.name}')">
+                        Execute Tool
+                      </button>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(modal);
+        modal.classList.remove('hidden');
+
+      } else {
+        this.showNotification(`Failed to load tools: ${result.error}`, 'error');
+      }
+
+    } catch (error) {
+      console.error('Error loading MCP tools:', error);
+      this.showNotification('Failed to load tools', 'error');
+    }
+  }
+
+  async executeMCPTool(connectionId, toolName) {
+    // Simple tool execution - in a real implementation, you'd want a form for parameters
+    const parameters = {};
+    
+    // For demo purposes, provide some default parameters for common tools
+    if (toolName === 'list_directory') {
+      parameters.path = prompt('Enter directory path:', process.cwd() || '/');
+      if (!parameters.path) return;
+    } else if (toolName === 'execute_command') {
+      parameters.command = prompt('Enter command to execute:', 'echo "Hello from MCP!"');
+      if (!parameters.command) return;
+    } else if (toolName === 'read_file') {
+      parameters.path = prompt('Enter file path:');
+      if (!parameters.path) return;
+    }
+
+    try {
+      const result = await ipcRenderer.invoke('mcp-execute-tool', connectionId, toolName, parameters);
+      
+      if (result.success) {
+        // Show result in a modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+          <div class="modal-content">
+            <div class="modal-header">
+              <h2>Tool Result - ${toolName}</h2>
+              <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+            </div>
+            <div class="modal-body">
+              <pre class="tool-result">${JSON.stringify(result.result, null, 2)}</pre>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+        modal.classList.remove('hidden');
+
+      } else {
+        this.showNotification(`Tool execution failed: ${result.error}`, 'error');
+      }
+
+    } catch (error) {
+      console.error('Error executing MCP tool:', error);
+      this.showNotification('Tool execution failed', 'error');
     }
   }
 
   async removeMCPConnection(connectionId) {
-    if (confirm('Are you sure you want to remove this connection?')) {
-      try {
-        await ipcRenderer.invoke('remove-mcp-connection', connectionId);
-        this.loadMCPConnections(); // Refresh the list
-        this.updateMCPCount();
-      } catch (error) {
-        alert('Error removing connection: ' + error.message);
+    if (!confirm('Are you sure you want to remove this MCP connection?')) {
+      return;
+    }
+
+    try {
+      const result = await ipcRenderer.invoke('mcp-remove-connection', connectionId);
+      
+      if (result.success) {
+        this.showNotification('Connection removed successfully', 'success');
+        await this.loadMCPConnections();
+      } else {
+        this.showNotification(`Failed to remove connection: ${result.error}`, 'error');
       }
+
+    } catch (error) {
+      console.error('Error removing MCP connection:', error);
+      this.showNotification('Failed to remove connection', 'error');
     }
   }
+
+  showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      notification.remove();
+    }, 3000);
+  }
+
+  // MCP methods consolidated
 
   showAddMCPDialog() {
     // This would open a dialog to add new MCP connections
     alert('Add MCP Connection feature coming soon!');
   }
 
-  editMCPConnection(connectionId) {
+  editMCPConnection(/* connectionId */) {
     // This would open a dialog to edit MCP connections
     alert('Edit MCP Connection feature coming soon!');
   }

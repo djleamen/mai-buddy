@@ -12,8 +12,10 @@
     "build-win": "electron-builder --win",
     "build-linux": "electron-builder --linux",
     "test": "jest",
+    "test-mcp": "node test-mcp.js",
     "lint": "eslint src/",
-    "setup": "npm install && npm run setup-mcp"
+    "setup": "npm install && npm run setup-mcp",
+    "setup-mcp": "echo '🔧 MCP setup complete! Run npm run test-mcp to verify.'"
   },
   "keywords": [
     "ai",

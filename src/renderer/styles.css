@@ -246,6 +246,53 @@ button, input, textarea, select {
   border: 1px solid var(--border-color);
 }
 
+/* Tool Execution Messages */
+.message.tool-execution {
+  opacity: 0.9;
+}
+
+.message-content.tool-result {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.tool-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--primary-color);
+  font-size: 12px;
+}
+
+.tool-icon {
+  font-size: 14px;
+}
+
+.tool-output {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  padding: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.tool-output pre {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.message.system {
+  text-align: center;
+}
+
 .message-timestamp {
   font-size: 11px;
   color: var(--text-muted);
@@ -675,6 +722,293 @@ kbd {
   color: var(--primary-color);
 }
 
+/* MCP Styles */
+.mcp-btn {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mcp-btn.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
+.mcp-btn:hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.mcp-category {
+  margin-bottom: 24px;
+}
+
+.mcp-category-title {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.mcp-connections-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.mcp-connection-card {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.mcp-connection-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+}
+
+.mcp-connection-card.connected {
+  border-left: 3px solid var(--success-color);
+}
+
+.mcp-connection-card.disconnected {
+  border-left: 3px solid var(--text-muted);
+}
+
+.mcp-connection-card.error {
+  border-left: 3px solid var(--error-color);
+}
+
+.mcp-connection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.mcp-connection-info h4 {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.mcp-connection-info p {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.mcp-capabilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.capability-tag {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--primary-color);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.capability-more {
+  background: var(--text-muted);
+  color: var(--text-primary);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 12px;
+}
+
+.mcp-connection-status {
+  text-align: right;
+}
+
+.mcp-connection-status small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+.mcp-connection-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn:hover {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.btn.btn-sm {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.btn.btn-primary {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.btn.btn-danger {
+  background: var(--error-color);
+  border-color: var(--error-color);
+  color: white;
+}
+
+.btn.btn-danger:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-state h3 {
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.tools-list {
+  display: grid;
+  gap: 12px;
+}
+
+.tool-card {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.tool-card h4 {
+  color: var(--text-primary);
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.tool-card p {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.tool-parameters {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.tool-result {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 10000;
+  animation: slideIn 0.3s ease;
+}
+
+.notification-success {
+  background: var(--success-color);
+  color: white;
+}
+
+.notification-error {
+  background: var(--error-color);
+  color: white;
+}
+
+.notification-info {
+  background: var(--primary-color);
+  color: white;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .modal-content {
@@ -688,5 +1022,13 @@ kbd {
   
   .message-content {
     max-width: 90%;
+  }
+  
+  .mcp-connection-actions {
+    flex-direction: column;
+  }
+  
+  .btn {
+    justify-content: center;
   }
 }

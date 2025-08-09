@@ -2,15 +2,23 @@ const Store = require('electron-store');
 const { v4: uuidv4 } = require('uuid');
 const WebSocket = require('ws');
 const axios = require('axios');
+const { MCPTools } = require('./mcp-tools');
+const { MCPServer } = require('./mcp-server');
 
 class MCPManager {
   constructor() {
     this.store = new Store();
     this.connections = new Map();
     this.availableConnections = this.getAvailableMCPConnections();
+    this.tools = new MCPTools();
+    this.localServer = null;
+    this.isLocalServerRunning = false;
   }
 
   async initialize() {
+    // Start local MCP server
+    await this.startLocalServer();
+    
     const savedConnections = this.store.get('mcpConnections', []);
     
     for (const connectionData of savedConnections) {
@@ -20,6 +28,9 @@ class MCPManager {
         console.error(`Failed to restore connection ${connectionData.name}:`, error);
       }
     }
+
+    // Auto-connect to local filesystem and terminal by default
+    await this.addDefaultLocalConnections();
   }
 
   getAvailableMCPConnections() {
@@ -608,6 +619,203 @@ class MCPManager {
     }
 
     throw new Error('Unsupported connection type for MCP messaging');
+  }
+
+  // New methods for enhanced MCP functionality
+
+  async startLocalServer() {
+    if (!this.isLocalServerRunning && !this.localServer) {
+      try {
+        this.localServer = new MCPServer(3001);
+        await this.localServer.start();
+        this.isLocalServerRunning = true;
+        console.log('✅ Local MCP server started successfully');
+      } catch (error) {
+        console.error('Failed to start local MCP server:', error);
+        this.localServer = null;
+        this.isLocalServerRunning = false;
+      }
+    }
+  }
+
+  async stopLocalServer() {
+    if (this.localServer && this.isLocalServerRunning) {
+      this.localServer.stop();
+      this.isLocalServerRunning = false;
+      this.localServer = null;
+      console.log('🛑 Local MCP server stopped');
+    }
+  }
+
+  async addDefaultLocalConnections() {
+    const defaultConnections = [
+      {
+        id: 'local-filesystem',
+        name: 'Local File System',
+        description: 'Access local file system operations',
+        category: 'System',
+        type: 'local',
+        endpoint: 'local://filesystem',
+        requiresAuth: false,
+        capabilities: ['file-operations', 'directory-management', 'file-search']
+      },
+      {
+        id: 'local-terminal',
+        name: 'Local Terminal',
+        description: 'Execute terminal commands',
+        category: 'System',
+        type: 'local',
+        endpoint: 'local://terminal',
+        requiresAuth: false,
+        capabilities: ['command-execution', 'script-running', 'system-monitoring']
+      }
+    ];
+
+    for (const connectionData of defaultConnections) {
+      if (!this.connections.has(connectionData.id)) {
+        try {
+          await this.addConnection(connectionData, false);
+          console.log(`✅ Added default connection: ${connectionData.name}`);
+        } catch (error) {
+          console.error(`Failed to add default connection ${connectionData.name}:`, error);
+        }
+      }
+    }
+  }
+
+  async executeTool(connectionId, toolName, parameters) {
+    const connection = this.connections.get(connectionId);
+    
+    if (!connection || connection.status !== 'connected') {
+      throw new Error('Connection not available');
+    }
+
+    // For local connections, use the tools directly
+    if (connection.type === 'local') {
+      const connectionType = this.getConnectionTypeFromEndpoint(connection.endpoint);
+      return await this.tools.executeTool(connectionType, toolName, parameters);
+    }
+
+    // For other connections, send MCP message
+    if (connection.type === 'websocket') {
+      return await this.sendMCPMessage(connectionId, {
+        connection_type: connection.category.toLowerCase(),
+        tool_name: toolName,
+        arguments: parameters
+      }, 'tools/call');
+    }
+
+    throw new Error('Tool execution not supported for this connection type');
+  }
+
+  getConnectionTypeFromEndpoint(endpoint) {
+    if (endpoint.includes('filesystem')) return 'filesystem';
+    if (endpoint.includes('terminal')) return 'terminal';
+    if (endpoint.includes('calendar')) return 'calendar';
+    return 'filesystem'; // default
+  }
+
+  async getAvailableTools(connectionId) {
+    const connection = this.connections.get(connectionId);
+    
+    if (!connection) {
+      throw new Error('Connection not found');
+    }
+
+    // For local connections, get tools from MCPTools
+    if (connection.type === 'local') {
+      const connectionType = this.getConnectionTypeFromEndpoint(connection.endpoint);
+      return this.tools.getToolsListForConnection(connectionType);
+    }
+
+    // For remote connections, query via MCP
+    if (connection.type === 'websocket' && connection.status === 'connected') {
+      try {
+        const result = await this.sendMCPMessage(connectionId, {
+          connection_type: connection.category.toLowerCase()
+        }, 'tools/list');
+        return result.tools || [];
+      } catch (error) {
+        console.error(`Failed to get tools for ${connectionId}:`, error);
+        return [];
+      }
+    }
+
+    return [];
+  }
+
+  async testConnectionWithPing(connectionId) {
+    const connection = this.connections.get(connectionId);
+    
+    if (!connection) {
+      throw new Error('Connection not found');
+    }
+
+    if (connection.type === 'websocket' && connection.status === 'connected') {
+      try {
+        const result = await this.sendMCPMessage(connectionId, {}, 'ping');
+        return { success: true, ...result };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    }
+
+    // For other connection types, use existing test method
+    return await this.testConnection(connectionId);
+  }
+
+  getConnectionStats() {
+    const stats = {
+      total: this.connections.size,
+      connected: 0,
+      disconnected: 0,
+      error: 0,
+      byType: {},
+      byCategory: {}
+    };
+
+    for (const connection of this.connections.values()) {
+      // Count by status
+      stats[connection.status] = (stats[connection.status] || 0) + 1;
+      
+      // Count by type
+      stats.byType[connection.type] = (stats.byType[connection.type] || 0) + 1;
+      
+      // Count by category
+      stats.byCategory[connection.category] = (stats.byCategory[connection.category] || 0) + 1;
+    }
+
+    stats.localServerRunning = this.isLocalServerRunning;
+    return stats;
+  }
+
+  async reconnectAll() {
+    const results = [];
+    
+    for (const [connectionId, connection] of this.connections) {
+      if (connection.status !== 'connected') {
+        try {
+          await this.establishConnection(connection);
+          results.push({ connectionId, success: true });
+        } catch (error) {
+          results.push({ connectionId, success: false, error: error.message });
+        }
+      }
+    }
+    
+    return results;
+  }
+
+  async cleanup() {
+    // Disconnect all connections
+    for (const connection of this.connections.values()) {
+      await this.disconnectConnection(connection);
+    }
+    
+    // Stop local server
+    await this.stopLocalServer();
+    
+    console.log('🧹 MCP Manager cleanup completed');
   }
 }
 
