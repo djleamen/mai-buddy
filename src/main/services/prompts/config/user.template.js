@@ -1,3 +1,5 @@
+/* Customize your user profile for a personalized experience with Mai Buddy. */
+
 const userConfig = {
   personal: {
     name: 'Your Name',

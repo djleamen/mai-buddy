@@ -1,3 +1,8 @@
+/*
+ * Main process for Mai Buddy
+ * Initializes the application and manages the main window, tray, and services.
+ */
+
 const { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
@@ -126,36 +131,28 @@ class MaiBuddyApp {
     ipcMain.on('hotkey-voice-activation', () => {
       try {
         console.log('Hotkey voice-activation triggered');
-      } catch (err) {
-        // Ignore console errors to prevent app crashes
-      }
+      } catch (err) { /* Ignore console errors to prevent app crashes */ }
       this.activateVoiceMode();
     });
     
     ipcMain.on('hotkey-quick-capture', () => {
       try {
         console.log('Hotkey quick-capture triggered');
-      } catch (err) {
-        // Ignore console errors to prevent app crashes
-      }
+      } catch (err) { /* Ignore console errors to prevent app crashes */ }
       // TODO: Implement quick capture functionality
     });
     
     ipcMain.on('hotkey-toggle-listening', () => {
       try {
         console.log('Hotkey toggle-listening triggered');
-      } catch (err) {
-        // Ignore console errors to prevent app crashes
-      }
+      } catch (err) { /* Ignore console errors to prevent app crashes */ }
       // TODO: Implement toggle listening functionality
     });
     
     ipcMain.on('hotkey-hide-window', () => {
       try {
         console.log('Hotkey hide-window triggered');
-      } catch (err) {
-        // Ignore console errors to prevent app crashes
-      }
+      } catch (err) { /* Ignore console errors to prevent app crashes */ }
       this.hideChatWindow();
     });
   }
@@ -188,7 +185,6 @@ class MaiBuddyApp {
       try {
         this.store.set('settings', settings);
         
-        // Reinitialize services with new settings
         await this.aiService.initialize();
         await this.voiceService.initialize();
         
@@ -204,7 +200,6 @@ class MaiBuddyApp {
         // Use MCP-enhanced processing if available
         const response = await this.aiService.processWithMCP(message, this.mcpManager);
         
-        // Log tool execution for debugging
         if (response.toolExecuted) {
           console.log('🔧 Tool executed successfully:', response.toolResult);
         } else if (response.toolError) {
@@ -481,7 +476,6 @@ app.whenReady().then(async () => {
   const maiBuddy = new MaiBuddyApp();
   await maiBuddy.initialize();
   
-  // Store reference for cleanup
   global.maiBuddy = maiBuddy;
 
   app.on('activate', () => {
@@ -500,7 +494,6 @@ app.on('window-all-closed', () => {
 app.on('will-quit', async () => {
   globalShortcut.unregisterAll();
   
-  // Cleanup MCP connections
   if (global.maiBuddy && global.maiBuddy.mcpManager) {
     await global.maiBuddy.mcpManager.cleanup();
   }

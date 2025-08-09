@@ -1,3 +1,7 @@
+/*
+ * Voice Service for handling text-to-speech and speech recognition
+ */
+
 const { ElevenLabsClient } = require('elevenlabs');
 const Store = require('electron-store');
 const fs = require('fs');
@@ -59,7 +63,7 @@ class VoiceService {
     }
 
     try {
-      const voice = options.voice || 'Rachel'; // Default voice
+      const voice = options.voice || 'Rachel'; // feel free to customize
       const model = options.model || 'eleven_monolingual_v1';
 
       const audio = await this.elevenLabs.textToSpeech.convert({

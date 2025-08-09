@@ -1,3 +1,5 @@
+/* Customize your tech stack and expertise for Mai Buddy. */
+
 const techConfig = {
   expertise: {
     general: [

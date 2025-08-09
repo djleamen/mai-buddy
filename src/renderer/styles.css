@@ -24,7 +24,7 @@ body {
   background: var(--background-color);
   color: var(--text-primary);
   overflow: hidden;
-  user-select: none; /* Prevent selection on drag areas only */
+  user-select: none;
 }
 
 button, input, textarea, select {
@@ -90,7 +90,6 @@ button, input, textarea, select {
   color: var(--text-primary);
 }
 
-/* Connection Status */
 .connection-status {
   display: flex;
   align-items: center;

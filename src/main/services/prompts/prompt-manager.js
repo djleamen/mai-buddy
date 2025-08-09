@@ -1,3 +1,8 @@
+/*
+ * Prompt manager to build the prompt for Mai Buddy.
+ * Configurations are separated to improve modularity and maintainability.
+ */
+
 const { baseConfig } = require('./config/base');
 const { techConfig } = require('./config/tech');
 const { userConfig } = require('./config/user');
