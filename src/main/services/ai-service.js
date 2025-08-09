@@ -383,7 +383,7 @@ User message: ${message}`;
       let path = '';
       
       // First check for explicit full paths that user provided
-      const explicitPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\/\\w.-]*`, 'i'));
+      const explicitPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/\\w.-]*`, 'i'));
       if (explicitPathMatch) {
         path = explicitPathMatch[0];
       }
