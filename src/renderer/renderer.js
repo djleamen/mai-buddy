@@ -48,6 +48,7 @@ class MaiBuddyRenderer {
 
   setupEventListeners() {
     // Title bar buttons
+    this.settingsBtn.addEventListener('click', () => this.showSettings());
     this.minimizeBtn.addEventListener('click', () => this.hideWindow());
     
     // MCP button
