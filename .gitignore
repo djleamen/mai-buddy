@@ -10,6 +10,29 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
+# AI
+ollama/
+Modelfile
+system-prompt.js
+base.js
+tech.js
+user.js
+
+# Environment and secrets
+.env
+.env.local
+.env.*
+.env.*.local
+.env.development
+.env.test
+.env.production
+*.key
+*.pem
+.secret.*
+.credentials/
+**/credentials.*
+config.json
+
 # Runtime data
 pids
 *.pid

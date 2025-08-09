@@ -115,27 +115,47 @@ class MaiBuddyApp {
     console.log('Setting up hotkey event listeners');
     
     ipcMain.on('hotkey-show-chat', () => {
-      console.log('Hotkey show-chat triggered');
+      try {
+        console.log('Hotkey show-chat triggered');
+      } catch (err) {
+        // Ignore console errors to prevent app crashes
+      }
       this.toggleChatWindow();
     });
     
     ipcMain.on('hotkey-voice-activation', () => {
-      console.log('Hotkey voice-activation triggered');
+      try {
+        console.log('Hotkey voice-activation triggered');
+      } catch (err) {
+        // Ignore console errors to prevent app crashes
+      }
       this.activateVoiceMode();
     });
     
     ipcMain.on('hotkey-quick-capture', () => {
-      console.log('Hotkey quick-capture triggered');
+      try {
+        console.log('Hotkey quick-capture triggered');
+      } catch (err) {
+        // Ignore console errors to prevent app crashes
+      }
       // TODO: Implement quick capture functionality
     });
     
     ipcMain.on('hotkey-toggle-listening', () => {
-      console.log('Hotkey toggle-listening triggered');
+      try {
+        console.log('Hotkey toggle-listening triggered');
+      } catch (err) {
+        // Ignore console errors to prevent app crashes
+      }
       // TODO: Implement toggle listening functionality
     });
     
     ipcMain.on('hotkey-hide-window', () => {
-      console.log('Hotkey hide-window triggered');
+      try {
+        console.log('Hotkey hide-window triggered');
+      } catch (err) {
+        // Ignore console errors to prevent app crashes
+      }
       this.hideChatWindow();
     });
   }
@@ -181,20 +201,116 @@ class MaiBuddyApp {
 
     ipcMain.handle('send-message', async (event, message) => {
       try {
-        const response = await this.aiService.processMessage(message);
-        return response;
+        // Use MCP-enhanced processing if available
+        const response = await this.aiService.processWithMCP(message, this.mcpManager);
+        
+        // Log tool execution for debugging
+        if (response.toolExecuted) {
+          console.log('🔧 Tool executed successfully:', response.toolResult);
+        } else if (response.toolError) {
+          console.log('❌ Tool execution failed:', response.toolError);
+        }
+        
+        return {
+          success: true,
+          response: response.response,
+          usage: response.usage,
+          model: response.model,
+          toolExecuted: response.toolExecuted || false,
+          toolResult: response.toolResult,
+          toolError: response.toolError
+        };
       } catch (error) {
         console.error('Error processing message:', error);
-        return { error: error.message };
+        return {
+          success: false,
+          error: error.message
+        };
       }
-    });
-
-    ipcMain.handle('clear-conversation', async () => {
+    });    ipcMain.handle('clear-conversation', async () => {
       try {
         this.aiService.clearConversationHistory();
         return { success: true };
       } catch (error) {
         console.error('Error clearing conversation:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    // MCP Management handlers
+    ipcMain.handle('mcp-get-connections', async () => {
+      try {
+        return {
+          success: true,
+          connections: this.mcpManager.getConnections(),
+          stats: this.mcpManager.getConnectionStats()
+        };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('mcp-get-available-types', async () => {
+      try {
+        return {
+          success: true,
+          types: this.mcpManager.getAvailableConnectionTypes()
+        };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('mcp-add-connection', async (event, connectionData) => {
+      try {
+        const connection = await this.mcpManager.addConnection(connectionData);
+        return { success: true, connection };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('mcp-remove-connection', async (event, connectionId) => {
+      try {
+        const removed = await this.mcpManager.removeConnection(connectionId);
+        return { success: true, removed };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('mcp-test-connection', async (event, connectionId) => {
+      try {
+        const result = await this.mcpManager.testConnectionWithPing(connectionId);
+        return { success: true, result };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('mcp-get-tools', async (event, connectionId) => {
+      try {
+        const tools = await this.mcpManager.getAvailableTools(connectionId);
+        return { success: true, tools };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('mcp-execute-tool', async (event, connectionId, toolName, parameters) => {
+      try {
+        const result = await this.mcpManager.executeTool(connectionId, toolName, parameters);
+        return { success: true, result };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('mcp-reconnect-all', async () => {
+      try {
+        const results = await this.mcpManager.reconnectAll();
+        return { success: true, results };
+      } catch (error) {
         return { success: false, error: error.message };
       }
     });
@@ -364,6 +480,9 @@ class MaiBuddyApp {
 app.whenReady().then(async () => {
   const maiBuddy = new MaiBuddyApp();
   await maiBuddy.initialize();
+  
+  // Store reference for cleanup
+  global.maiBuddy = maiBuddy;
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -378,8 +497,13 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('will-quit', () => {
+app.on('will-quit', async () => {
   globalShortcut.unregisterAll();
+  
+  // Cleanup MCP connections
+  if (global.maiBuddy && global.maiBuddy.mcpManager) {
+    await global.maiBuddy.mcpManager.cleanup();
+  }
 });
 
 module.exports = { MaiBuddyApp };
