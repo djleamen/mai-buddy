@@ -18,14 +18,14 @@ class MCPServer {
 
   setupRequestHandlers() {
     // Handle tool listing requests
-    this.requestHandlers.set('tools/list', async (params, /* client */) => {
+    this.requestHandlers.set('tools/list', async (params) => {
       const connectionType = params.connection_type || 'filesystem';
       const tools = this.tools.getToolsListForConnection(connectionType);
       return { tools };
     });
 
     // Handle tool execution requests
-    this.requestHandlers.set('tools/call', async (params, /* client */) => {
+    this.requestHandlers.set('tools/call', async (params) => {
       const { connection_type, tool_name, arguments: toolArgs } = params;
       
       if (!connection_type || !tool_name) {
