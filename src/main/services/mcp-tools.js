@@ -1,5 +1,4 @@
 const fs = require('fs').promises;
-// const path = require('path'); // Commented out as it's currently unused
 const { exec } = require('child_process');
 const { promisify } = require('util');
 
