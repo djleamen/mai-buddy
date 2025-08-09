@@ -131,28 +131,28 @@ class MaiBuddyApp {
     ipcMain.on('hotkey-voice-activation', () => {
       try {
         console.log('Hotkey voice-activation triggered');
-      } catch (err) {}
+      } catch (err) { /* Ignore console errors to prevent app crashes */ }
       this.activateVoiceMode();
     });
     
     ipcMain.on('hotkey-quick-capture', () => {
       try {
         console.log('Hotkey quick-capture triggered');
-      } catch (err) {}
+      } catch (err) { /* Ignore console errors to prevent app crashes */ }
       // TODO: Implement quick capture functionality
     });
     
     ipcMain.on('hotkey-toggle-listening', () => {
       try {
         console.log('Hotkey toggle-listening triggered');
-      } catch (err) {}
+      } catch (err) { /* Ignore console errors to prevent app crashes */ }
       // TODO: Implement toggle listening functionality
     });
     
     ipcMain.on('hotkey-hide-window', () => {
       try {
         console.log('Hotkey hide-window triggered');
-      } catch (err) {}
+      } catch (err) { /* Ignore console errors to prevent app crashes */ }
       this.hideChatWindow();
     });
   }
