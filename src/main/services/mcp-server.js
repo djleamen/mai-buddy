@@ -155,7 +155,7 @@ class MCPServer {
         });
       }
     } catch (error) {
-      console.error(`Error handling ${method}:`, error);
+      console.error('Error handling method:', method, error);
       this.sendError(client, id, error.message);
     }
   }
