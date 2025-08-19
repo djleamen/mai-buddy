@@ -16,7 +16,7 @@ class MCPTools {
     try {
       this.toolHandlers = new ToolHandlers();
     } catch (err) {
-      throw new Error(`Failed to initialize ToolHandlers in MCPTools constructor: ${err && err.message ? err.message : err}`);
+      throw new Error(`Failed to initialize ToolHandlers in MCPTools constructor: ${err?.message ?? err}`);
     }
     this.registerDefaultTools();
   }

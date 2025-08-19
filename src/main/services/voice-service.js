@@ -35,7 +35,8 @@ class VoiceService {
     try {
       // Check if running in browser environment
       if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
-        this.speechRecognition = new window.webkitSpeechRecognition();
+        const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+        this.speechRecognition = new SpeechRecognition();
         this.speechRecognition.continuous = true;
         this.speechRecognition.interimResults = true;
         this.speechRecognition.lang = 'en-US';

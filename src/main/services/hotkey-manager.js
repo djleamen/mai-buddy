@@ -118,13 +118,13 @@ class HotkeyManager {
   isValidShortcut(shortcut) {
     // Basic validation for Electron accelerator format
     const validModifiers = ['CommandOrControl', 'Alt', 'Option', 'AltGr', 'Shift', 'Super', 'Meta'];
-    const validKeys = /^[A-Za-z0-9]$|^F[1-9]$|^F1[0-9]$|^F2[0-4]$|^Space$|^Tab$|^Backspace$|^Delete$|^Insert$|^Return$|^Enter$|^Up$|^Down$|^Left$|^Right$|^Home$|^End$|^PageUp$|^PageDown$|^Escape$|^VolumeUp$|^VolumeDown$|^VolumeMute$|^MediaNextTrack$|^MediaPreviousTrack$|^MediaStop$|^MediaPlayPause$/;
-
+    
     const parts = shortcut.split('+');
     const key = parts[parts.length - 1];
     const modifiers = parts.slice(0, -1);
 
-    if (!validKeys.test(key)) {
+    // Check if key is valid using simpler checks
+    if (!this._isValidKey(key)) {
       return false;
     }
 
@@ -135,6 +135,28 @@ class HotkeyManager {
     }
 
     return true;
+  }
+
+  _isValidKey(key) {
+    // Check for alphanumeric characters
+    if (/^[A-Za-z\d]$/.test(key)) {
+      return true;
+    }
+    
+    // Check for function keys
+    if (/^F([1-9]|1\d|2[0-4])$/.test(key)) {
+      return true;
+    }
+    
+    // Check for special keys
+    const specialKeys = [
+      'Space', 'Tab', 'Backspace', 'Delete', 'Insert', 'Return', 'Enter',
+      'Up', 'Down', 'Left', 'Right', 'Home', 'End', 'PageUp', 'PageDown',
+      'Escape', 'VolumeUp', 'VolumeDown', 'VolumeMute',
+      'MediaNextTrack', 'MediaPreviousTrack', 'MediaStop', 'MediaPlayPause'
+    ];
+    
+    return specialKeys.includes(key);
   }
 
   getAvailableModifiers() {

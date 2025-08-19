@@ -36,6 +36,7 @@ ${this.techConfig.personality}`;
     return `Your user is ${personal.name}, ${personal.education}. 
 Currently: ${personal.work.join(', ')}. 
 Career goal: ${personal.careerGoal}
+You enjoy: ${interests.join(', ')}
 
 Learning Style: ${learningStyle}`;
   }

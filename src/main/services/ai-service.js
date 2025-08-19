@@ -233,240 +233,285 @@ User message: ${message}`;
   analyzeToolRequest(message, availableTools) {
     const lowerMessage = message.toLowerCase();
     
-    // Command execution patterns
+    // Try different tool request types in order
+    return this.analyzeCommandRequest(message, lowerMessage, availableTools) ||
+           this.analyzeListDirectoryRequest(message, lowerMessage, availableTools) ||
+           this.analyzeReadFileRequest(message, lowerMessage, availableTools) ||
+           this.analyzeWriteFileRequest(message, lowerMessage, availableTools) ||
+           null;
+  }
 
-    if (lowerMessage.includes('run ') || lowerMessage.includes('execute ') || 
-        lowerMessage.includes('command ') || lowerMessage.includes('./') ||
-        lowerMessage.includes('.sh') || lowerMessage.includes('/')) {
-      
-      let command = '';
-      
-      const absolutePathMatch = message.match(/[/][\w.-/]+\.sh/);
-      if (absolutePathMatch) {
-        command = absolutePathMatch[0];
-      }
-      
-      const scriptMatch = message.match(/\.\/[\w.-]+/);
-      if (scriptMatch && !command) {
-        command = scriptMatch[0];
-      }
-      
-      const scriptNameMatch = message.match(/\b([\w.-]+\.sh)\b/);
-      if (scriptNameMatch && !command) {
-        const scriptName = scriptNameMatch[1];
-        
-        const commonPaths = [
-          `${this.userHomePath}/${scriptName}`, // User home directory
-          `/${scriptName}`, // Root directory
-          `./${scriptName}`, // Current directory
-          `/usr/local/bin/${scriptName}`, // Local bin
-          `/opt/homebrew/bin/${scriptName}` // Homebrew bin
-        ];
-        
-        if (lowerMessage.includes('root')) {
-          command = `/${scriptName}`;
-        } else {
-          command = `${this.userHomePath}/${scriptName}`; // Default to user home
-        }
-      }
-      
-      const quotedMatch = message.match(/['"`]([^'"`]+)['"`]/);
-      if (quotedMatch && !command) {
-        command = quotedMatch[1];
-      }
-      
-      const runMatch = message.match(/(?:run|execute)\s+(.+?)(?:\s|$)/i);
-      if (runMatch && !command) {
-        command = runMatch[1].trim();
-      }
-      
-      const terminalTools = availableTools['Local Terminal'];
-      if (command && terminalTools) {
-        const executeTool = terminalTools.find(t => t.name === 'execute_command');
-        if (executeTool) {
-          return {
-            connectionId: executeTool.connectionId,
-            connectionName: 'Local Terminal',
-            toolName: 'execute_command',
-            parameters: { command }
-          };
-        }
-      }
-    }
-    
-    // File operations - List directory
-    if ((lowerMessage.includes('list ') && (lowerMessage.includes('files') || lowerMessage.includes('directory') || lowerMessage.includes('folder'))) ||
-        (lowerMessage.includes('what\'s in') && (lowerMessage.includes('directory') || lowerMessage.includes('folder') || lowerMessage.includes('root'))) ||
-        lowerMessage.includes('list them') ||
-        lowerMessage.includes('list what') ||
-        (lowerMessage.includes('list') && lowerMessage.includes(this.userHomePath.toLowerCase()))) {
-      
-      let path = this.userHomePath;
-      
-      // First check for explicit full paths starting with the user home path
-      const userPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/\\w.-]*`, 'i'));
-      if (userPathMatch) {
-        path = userPathMatch[0];
-        // Ensure it ends without a slash (unless it's just the home directory)
-        if (path.endsWith('/') && path !== `${this.userHomePath}/`) {
-          path = path.slice(0, -1);
-        }
-      } else if (message.toLowerCase().includes(this.userHomePath.toLowerCase().replace('/', ''))) {
-        // Handle references without leading slash
-        const usernamePart = this.userHomePath.split('/').pop(); // Get just the username part
-        const partialPathMatch = message.match(new RegExp(`Users\\/${usernamePart}[\\/\\w.-]*`, 'i'));
-        if (partialPathMatch) {
-          path = '/' + partialPathMatch[0];
-        } else {
-          path = this.userHomePath;
-        }
-      } else {
-        // Check for specific references
-        if (lowerMessage.includes('root') && !lowerMessage.includes('project root')) {
-          path = this.userHomePath; // User root directory
-        } else if (lowerMessage.includes('desktop')) {
-          path = `${this.userHomePath}/Desktop`;
-        } else if (lowerMessage.includes('downloads')) {
-          path = `${this.userHomePath}/Downloads`;
-        } else if (lowerMessage.includes('documents')) {
-          path = `${this.userHomePath}/Documents`;
-        } else if (lowerMessage.includes('project')) {
-          path = process.cwd();
-        }
-        
-        const absolutePathMatch = message.match(/\/[\w.-/]+/);
-        if (absolutePathMatch && !absolutePathMatch[0].includes(this.userHomePath)) {
-          path = absolutePathMatch[0];
-        }
-      }
-      
-      const fsTools = availableTools['Local File System'];
-      if (fsTools) {
-        const listTool = fsTools.find(t => t.name === 'list_directory');
-        if (listTool) {
-          return {
-            connectionId: listTool.connectionId,
-            connectionName: 'Local File System',
-            toolName: 'list_directory',
-            parameters: { path }
-          };
-        }
-      }
-    }
-    
-    // File read operations
-    if ((lowerMessage.includes('read ') && lowerMessage.includes('file')) ||
-        (lowerMessage.includes('what\'s in') && (lowerMessage.includes('.txt') || lowerMessage.includes('.js') || lowerMessage.includes('.json') || lowerMessage.includes('.md'))) ||
-        lowerMessage.includes('show me the content')) {
-      
-      let path = '';
-      
-      const explicitPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/\\w.-]*`, 'i'));
-      if (explicitPathMatch) {
-        path = explicitPathMatch[0];
-      }
-      
-      // Look for file extensions
-      if (!path) {
-        const fileExtMatch = message.match(/\b([\w.-]+\.(txt|js|json|md|sh|py|html|css))\b/i);
-        if (fileExtMatch) {
-          const fileName = fileExtMatch[1];
-          // Check if it's in root context
-          if (lowerMessage.includes('root') || lowerMessage.includes('my root')) {
-            path = `${this.userHomePath}/${fileName}`;
-          } else if (lowerMessage.includes('desktop')) {
-            path = `${this.userHomePath}/Desktop/${fileName}`;
-          } else {
-            // Default to current directory or user home
-            path = fileName.startsWith('/') ? fileName : `${this.userHomePath}/${fileName}`;
-          }
-        }
-      }
-      
-      if (!path) {
-        const absolutePathMatch = message.match(/\/[\w.-/]+/);
-        if (absolutePathMatch) {
-          path = absolutePathMatch[0];
-        }
-      }
-      
-      if (!path) {
-        const pathMatch = message.match(/(?:read|in)\s+(?:the\s+)?(?:file\s+)?([^\s]+)/i);
-        if (pathMatch) {
-          path = pathMatch[1];
-          if (lowerMessage.includes('root') && !path.startsWith('/')) {
-            path = `${this.userHomePath}/${path}`;
-          }
-        }
-      }
-      
-      if (path) {
-        const fsTools = availableTools['Local File System'];
-        if (fsTools) {
-          const readTool = fsTools.find(t => t.name === 'read_file');
-          if (readTool) {
-            return {
-              connectionId: readTool.connectionId,
-              connectionName: 'Local File System',
-              toolName: 'read_file',
-              parameters: { path }
-            };
-          }
-        }
-      }
+  analyzeCommandRequest(message, lowerMessage, availableTools) {
+    if (!this.isCommandRequest(lowerMessage)) {
+      return null;
     }
 
-    // File write operations
-    if ((lowerMessage.includes('write ') && lowerMessage.includes('file')) ||
-        (lowerMessage.includes('create ') && lowerMessage.includes('file')) ||
-        lowerMessage.includes('create it') ||
-        lowerMessage.includes('make a file')) {
-      
-      let path = '';
-      let content = '';
-      
-      // Look for file creation requests
-      if (lowerMessage.includes('desktop') && lowerMessage.includes('mai')) {
-        path = `${this.userHomePath}/Desktop/message.txt`;
-        content = 'Hi, I\'m Mai';
-      } else if (lowerMessage.includes('create it')) {
-        // This is a follow-up to a previous request - use context
-        path = `${this.userHomePath}/Desktop/message.txt`;
-        content = 'Hi, I\'m Mai';
-      }
-      
-      const fileMatch = message.match(/file\s+(?:called\s+|named\s+)?([^\s]+)/i);
-      if (fileMatch && !path) {
-        const fileName = fileMatch[1];
-        if (lowerMessage.includes('desktop')) {
-          path = `${this.userHomePath}/Desktop/${fileName}`;
-        } else {
-          path = fileName;
-        }
-      }
-      
-      const contentMatch = message.match(/['"`]([^'"`]+)['"`]/);
-      if (contentMatch && !content) {
-        content = contentMatch[1];
-      }
-      
-      if (path) {
-        const fsTools = availableTools['Local File System'];
-        if (fsTools) {
-          const writeTool = fsTools.find(t => t.name === 'write_file');
-          if (writeTool) {
-            return {
-              connectionId: writeTool.connectionId,
-              connectionName: 'Local File System',
-              toolName: 'write_file',
-              parameters: { path, content: content || 'File created by Mai' }
-            };
-          }
-        }
-      }
+    const command = this.extractCommand(message, lowerMessage);
+    if (!command) {
+      return null;
+    }
+
+    const terminalTools = availableTools['Local Terminal'];
+    if (!terminalTools) {
+      return null;
+    }
+
+    const executeTool = terminalTools.find(t => t.name === 'execute_command');
+    if (!executeTool) {
+      return null;
+    }
+
+    return {
+      connectionId: executeTool.connectionId,
+      connectionName: 'Local Terminal',
+      toolName: 'execute_command',
+      parameters: { command }
+    };
+  }
+
+  isCommandRequest(lowerMessage) {
+    return lowerMessage.includes('run ') || 
+           lowerMessage.includes('execute ') || 
+           lowerMessage.includes('command ') || 
+           lowerMessage.includes('./') ||
+           lowerMessage.includes('.sh') || 
+           lowerMessage.includes('/');
+  }
+
+  extractCommand(message, lowerMessage) {
+    const absolutePathMatch = message.match(/\/[\w.-/]+\.sh/);
+    if (absolutePathMatch) {
+      return absolutePathMatch[0];
     }
     
-    return null; // No tool request detected
+    const scriptMatch = message.match(/\.\/[\w.-]+/);
+    if (scriptMatch) {
+      return scriptMatch[0];
+    }
+    
+    const scriptNameMatch = message.match(/\b([\w.-]+\.sh)\b/);
+    if (scriptNameMatch) {
+      const scriptName = scriptNameMatch[1];
+      return lowerMessage.includes('root') ? `/${scriptName}` : `${this.userHomePath}/${scriptName}`;
+    }
+    
+    const quotedMatch = message.match(/['"`]([^'"`]+)['"`]/);
+    if (quotedMatch) {
+      return quotedMatch[1];
+    }
+    
+    const runMatch = message.match(/(?:run|execute)\s+(.+?)(?:\s|$)/i);
+    if (runMatch) {
+      return runMatch[1].trim();
+    }
+    
+    return null;
+  }
+
+  analyzeListDirectoryRequest(message, lowerMessage, availableTools) {
+    if (!this.isListDirectoryRequest(lowerMessage)) {
+      return null;
+    }
+
+    const path = this.extractDirectoryPath(message, lowerMessage);
+    const fsTools = availableTools['Local File System'];
+    if (!fsTools) {
+      return null;
+    }
+
+    const listTool = fsTools.find(t => t.name === 'list_directory');
+    if (!listTool) {
+      return null;
+    }
+
+    return {
+      connectionId: listTool.connectionId,
+      connectionName: 'Local File System',
+      toolName: 'list_directory',
+      parameters: { path }
+    };
+  }
+
+  isListDirectoryRequest(lowerMessage) {
+    return (lowerMessage.includes('list ') && (lowerMessage.includes('files') || lowerMessage.includes('directory') || lowerMessage.includes('folder'))) ||
+           (lowerMessage.includes('what\'s in') && (lowerMessage.includes('directory') || lowerMessage.includes('folder') || lowerMessage.includes('root'))) ||
+           lowerMessage.includes('list them') ||
+           lowerMessage.includes('list what') ||
+           (lowerMessage.includes('list') && lowerMessage.includes(this.userHomePath.toLowerCase()));
+  }
+
+  extractDirectoryPath(message, lowerMessage) {
+    let path = this.userHomePath;
+    
+    const userPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/\\w.-]*`, 'i'));
+    if (userPathMatch) {
+      path = userPathMatch[0];
+      if (path.endsWith('/') && path !== `${this.userHomePath}/`) {
+        path = path.slice(0, -1);
+      }
+      return path;
+    }
+    
+    if (message.toLowerCase().includes(this.userHomePath.toLowerCase().replace('/', ''))) {
+      const usernamePart = this.userHomePath.split('/').pop();
+      const partialPathMatch = message.match(new RegExp(`Users\\/${usernamePart}[\\/\\w.-]*`, 'i'));
+      return partialPathMatch ? '/' + partialPathMatch[0] : this.userHomePath;
+    }
+    
+    return this.getSpecialDirectoryPath(lowerMessage, message);
+  }
+
+  getSpecialDirectoryPath(lowerMessage, message) {
+    if (lowerMessage.includes('root') && !lowerMessage.includes('project root')) {
+      return this.userHomePath;
+    }
+    if (lowerMessage.includes('desktop')) {
+      return `${this.userHomePath}/Desktop`;
+    }
+    if (lowerMessage.includes('downloads')) {
+      return `${this.userHomePath}/Downloads`;
+    }
+    if (lowerMessage.includes('documents')) {
+      return `${this.userHomePath}/Documents`;
+    }
+    if (lowerMessage.includes('project')) {
+      return process.cwd();
+    }
+    
+    const absolutePathMatch = message.match(/\/[\w.-/]+/);
+    if (absolutePathMatch && !absolutePathMatch[0].includes(this.userHomePath)) {
+      return absolutePathMatch[0];
+    }
+    
+    return this.userHomePath;
+  }
+
+  analyzeReadFileRequest(message, lowerMessage, availableTools) {
+    if (!this.isReadFileRequest(lowerMessage)) {
+      return null;
+    }
+
+    const path = this.extractFilePath(message, lowerMessage, 'read');
+    if (!path) {
+      return null;
+    }
+
+    const fsTools = availableTools['Local File System'];
+    if (!fsTools) {
+      return null;
+    }
+
+    const readTool = fsTools.find(t => t.name === 'read_file');
+    if (!readTool) {
+      return null;
+    }
+
+    return {
+      connectionId: readTool.connectionId,
+      connectionName: 'Local File System',
+      toolName: 'read_file',
+      parameters: { path }
+    };
+  }
+
+  isReadFileRequest(lowerMessage) {
+    return (lowerMessage.includes('read ') && lowerMessage.includes('file')) ||
+           (lowerMessage.includes('what\'s in') && (lowerMessage.includes('.txt') || lowerMessage.includes('.js') || lowerMessage.includes('.json') || lowerMessage.includes('.md'))) ||
+           lowerMessage.includes('show me the content');
+  }
+
+  extractFilePath(message, lowerMessage, operation) {
+    const explicitPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/\\w.-]*`, 'i'));
+    if (explicitPathMatch) {
+      return explicitPathMatch[0];
+    }
+    
+    const fileExtMatch = message.match(/\b([\w.-]+\.(txt|js|json|md|sh|py|html|css))\b/i);
+    if (fileExtMatch) {
+      return this.getFilePathFromExtension(fileExtMatch[1], lowerMessage);
+    }
+    
+    const absolutePathMatch = message.match(/\/[\w.-/]+/);
+    if (absolutePathMatch) {
+      return absolutePathMatch[0];
+    }
+    
+    const pathMatch = message.match(/(?:read|in)\s+(?:the\s+)?(?:file\s+)?([^\s]+)/i);
+    if (pathMatch) {
+      const path = pathMatch[1];
+      return (lowerMessage.includes('root') && !path.startsWith('/')) ? `${this.userHomePath}/${path}` : path;
+    }
+    
+    return null;
+  }
+
+  getFilePathFromExtension(fileName, lowerMessage) {
+    if (lowerMessage.includes('root') || lowerMessage.includes('my root')) {
+      return `${this.userHomePath}/${fileName}`;
+    }
+    if (lowerMessage.includes('desktop')) {
+      return `${this.userHomePath}/Desktop/${fileName}`;
+    }
+    return fileName.startsWith('/') ? fileName : `${this.userHomePath}/${fileName}`;
+  }
+
+  analyzeWriteFileRequest(message, lowerMessage, availableTools) {
+    if (!this.isWriteFileRequest(lowerMessage)) {
+      return null;
+    }
+
+    const { path, content } = this.extractWriteFileParams(message, lowerMessage);
+    if (!path) {
+      return null;
+    }
+
+    const fsTools = availableTools['Local File System'];
+    if (!fsTools) {
+      return null;
+    }
+
+    const writeTool = fsTools.find(t => t.name === 'write_file');
+    if (!writeTool) {
+      return null;
+    }
+
+    return {
+      connectionId: writeTool.connectionId,
+      connectionName: 'Local File System',
+      toolName: 'write_file',
+      parameters: { path, content: content || 'File created by Mai' }
+    };
+  }
+
+  isWriteFileRequest(lowerMessage) {
+    return (lowerMessage.includes('write ') && lowerMessage.includes('file')) ||
+           (lowerMessage.includes('create ') && lowerMessage.includes('file')) ||
+           lowerMessage.includes('create it') ||
+           lowerMessage.includes('make a file');
+  }
+
+  extractWriteFileParams(message, lowerMessage) {
+    let path = '';
+    let content = '';
+    
+    if ((lowerMessage.includes('desktop') && lowerMessage.includes('mai')) || lowerMessage.includes('create it')) {
+      path = `${this.userHomePath}/Desktop/message.txt`;
+      content = 'Hi, I\'m Mai';
+      return { path, content };
+    }
+    
+    const fileMatch = message.match(/file\s+(?:called\s+|named\s+)?([^\s]+)/i);
+    if (fileMatch) {
+      const fileName = fileMatch[1];
+      path = lowerMessage.includes('desktop') ? `${this.userHomePath}/Desktop/${fileName}` : fileName;
+    }
+    
+    const contentMatch = message.match(/['"`]([^'"`]+)['"`]/);
+    if (contentMatch) {
+      content = contentMatch[1];
+    }
+    
+    return { path, content };
   }
 
   detectToolMentions(response, availableTools) {

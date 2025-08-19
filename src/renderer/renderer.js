@@ -544,7 +544,9 @@ class MaiBuddyRenderer {
                       ${conn.capabilities.slice(0, 3).map(cap => `
                         <span class="capability-tag">${cap}</span>
                       `).join('')}
-                      ${conn.capabilities.length > 3 ? `<span class="capability-more">+${conn.capabilities.length - 3}</span>` : ''}
+                      ${(() => {
+                        return conn.capabilities.length > 3 ? `<span class="capability-more">+${conn.capabilities.length - 3}</span>` : '';
+                      })()}
                     </div>
                   ` : ''}
                 </div>
@@ -554,7 +556,7 @@ class MaiBuddyRenderer {
                 </div>
               </div>
               <div class="mcp-connection-actions">
-                <button class="btn btn-sm" onclick="renderer.testMCPConnection('${conn.id}')" title="Test connection">
+                <button class="btn btn-sm" onclick="renderer.testMCPConnection('${conn.id}', this)" title="Test connection">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M11,16.5L6.5,12L7.91,10.59L11,13.67L16.59,8.09L18,9.5L11,16.5Z"/>
                   </svg>
@@ -581,13 +583,116 @@ class MaiBuddyRenderer {
   }
 
   async showAddMCPConnection() {
-    // TODO: Implement add connection dialog
-    alert('Add MCP Connection feature coming soon!');
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Add MCP Connection</h2>
+          <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+        </div>
+        <div class="modal-body">
+          <form id="addMcpForm">
+            <div class="form-group">
+              <label for="mcpName">Connection Name</label>
+              <input type="text" id="mcpName" required placeholder="e.g., File System Tools">
+            </div>
+            
+            <div class="form-group">
+              <label for="mcpType">Connection Type</label>
+              <select id="mcpType" required>
+                <option value="">Select connection type</option>
+                <option value="stdio">Standard I/O</option>
+                <option value="sse">Server-Sent Events</option>
+                <option value="websocket">WebSocket</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="mcpCommand">Command/Executable Path</label>
+              <input type="text" id="mcpCommand" required placeholder="e.g., node /path/to/mcp-server.js">
+            </div>
+            
+            <div class="form-group">
+              <label for="mcpArgs">Arguments (optional)</label>
+              <input type="text" id="mcpArgs" placeholder="--config config.json">
+            </div>
+            
+            <div class="form-group">
+              <label for="mcpCategory">Category</label>
+              <select id="mcpCategory">
+                <option value="Development">Development</option>
+                <option value="File System">File System</option>
+                <option value="Database">Database</option>
+                <option value="API">API</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="mcpDescription">Description</label>
+              <textarea id="mcpDescription" placeholder="Brief description of what this connection provides"></textarea>
+            </div>
+            
+            <div class="form-group checkbox-group">
+              <label>
+                <input type="checkbox" id="mcpAutoStart" checked>
+                Auto-start with application
+              </label>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancel</button>
+          <button class="btn btn-primary" onclick="renderer.addMCPConnection()">Add Connection</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.classList.remove('hidden');
   }
 
-  async testMCPConnection(connectionId) {
+  async addMCPConnection() {
+    const form = document.getElementById('addMcpForm');
+    const formData = new FormData(form);
+    
+    const connectionData = {
+      name: formData.get('mcpName').trim(),
+      type: formData.get('mcpType'),
+      command: formData.get('mcpCommand').trim(),
+      args: formData.get('mcpArgs').trim().split(' ').filter(Boolean),
+      category: formData.get('mcpCategory'),
+      description: formData.get('mcpDescription').trim(),
+      autoStart: formData.get('mcpAutoStart').checked
+    };
+    
+    // Validate required fields
+    if (!connectionData.name || !connectionData.type || !connectionData.command) {
+      this.showNotification('Please fill in all required fields', 'error');
+      return;
+    }
+    
     try {
-      const button = event.target.closest('button');
+      const result = await ipcRenderer.invoke('mcp-add-connection', connectionData);
+      
+      if (result.success) {
+        this.showNotification('MCP connection added successfully!', 'success');
+        document.querySelector('.modal').remove();
+        await this.loadMCPConnections();
+      } else {
+        this.showNotification(`Failed to add connection: ${result.error}`, 'error');
+      }
+      
+    } catch (error) {
+      console.error('Error adding MCP connection:', error);
+      this.showNotification('Failed to add connection', 'error');
+    }
+  }
+
+  async testMCPConnection(connectionId, buttonElement) {
+    try {
+      const button = buttonElement || document.querySelector(`[onclick*="${connectionId}"]`);
       button.dataset.originalText = button.innerHTML;
       button.innerHTML = '<span class="spinner"></span> Testing...';
       button.disabled = true;
@@ -606,7 +711,7 @@ class MaiBuddyRenderer {
       console.error('Error testing MCP connection:', error);
       this.showNotification('Connection test failed', 'error');
     } finally {
-      const button = event.target.closest('button');
+      const button = buttonElement || document.querySelector(`[onclick*="${connectionId}"]`);
       button.innerHTML = button.dataset.originalText;
       button.disabled = false;
     }

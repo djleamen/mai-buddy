@@ -10,7 +10,10 @@ class ToolHandlers {
   constructor() {
     this.store = new Store();
     this.githubClient = null;
-    this.initializeClients();
+  }
+
+  async initialize() {
+    await this.initializeClients();
   }
 
   async initializeClients() {

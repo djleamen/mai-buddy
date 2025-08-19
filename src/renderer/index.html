@@ -147,14 +147,14 @@
                 <div id="hotkeysTab" class="tab-content">
                     <h3>Hotkeys</h3>
                     <div class="setting-group">
-                        <label>Show/Hide Chat</label>
+                        <label for="showChatHotkey">Show/Hide Chat</label>
                         <div class="hotkey-input">
                             <input type="text" id="showChatHotkey" value="Cmd+Shift+M" readonly>
                             <button class="change-hotkey-btn" data-action="show-chat">Change</button>
                         </div>
                     </div>
                     <div class="setting-group">
-                        <label>Voice Activation</label>
+                        <label for="voiceActivationHotkey">Voice Activation</label>
                         <div class="hotkey-input">
                             <input type="text" id="voiceActivationHotkey" value="Cmd+Shift+V" readonly>
                             <button class="change-hotkey-btn" data-action="voice-activation">Change</button>
@@ -180,7 +180,7 @@
                 <div class="mcp-toolbar">
                     <button id="addMcpBtn" class="btn primary">Add Connection</button>
                     <div class="mcp-filter">
-                        <select id="mcpCategoryFilter">
+                        <select id="mcpCategoryFilter" title="Filter MCP connections by category">
                             <option value="">All Categories</option>
                             <option value="Development">Development</option>
                             <option value="Communication">Communication</option>

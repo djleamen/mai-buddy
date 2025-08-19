@@ -3,7 +3,7 @@
  * Initializes the application and manages the main window, tray, and services.
  */
 
-const { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, screen, desktopCapturer } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const { AIService } = require('./services/ai-service');
@@ -22,6 +22,7 @@ class MaiBuddyApp {
     this.mcpManager = new MCPManager();
     this.hotkeyManager = new HotkeyManager();
     this.isQuitting = false;
+    this.isListening = false;
   }
 
   async initialize() {
@@ -29,7 +30,7 @@ class MaiBuddyApp {
     await this.createTray();
     await this.setupServices();
     await this.registerGlobalShortcuts();
-    await this.setupIpcHandlers();
+    this.setupIpcHandlers();
   }
 
   async createMainWindow() {
@@ -120,39 +121,26 @@ class MaiBuddyApp {
     console.log('Setting up hotkey event listeners');
     
     ipcMain.on('hotkey-show-chat', () => {
-      try {
-        console.log('Hotkey show-chat triggered');
-      } catch (err) {
-        // Ignore console errors to prevent app crashes
-      }
+      console.log('Hotkey show-chat triggered');
       this.toggleChatWindow();
     });
     
     ipcMain.on('hotkey-voice-activation', () => {
-      try {
-        console.log('Hotkey voice-activation triggered');
-      } catch (err) { /* Ignore console errors to prevent app crashes */ }
+      console.log('Hotkey voice-activation triggered');
       this.activateVoiceMode();
     });
     
     ipcMain.on('hotkey-quick-capture', () => {
-      try {
-        console.log('Hotkey quick-capture triggered');
-      } catch (err) { /* Ignore console errors to prevent app crashes */ }
-      // TODO: Implement quick capture functionality
+      console.log('Hotkey quick-capture triggered');
+      this.captureScreenAndAnalyze();
     });
-    
     ipcMain.on('hotkey-toggle-listening', () => {
-      try {
-        console.log('Hotkey toggle-listening triggered');
-      } catch (err) { /* Ignore console errors to prevent app crashes */ }
-      // TODO: Implement toggle listening functionality
+      console.log('Hotkey toggle-listening triggered');
+      this.toggleListening();
     });
-    
+
     ipcMain.on('hotkey-hide-window', () => {
-      try {
-        console.log('Hotkey hide-window triggered');
-      } catch (err) { /* Ignore console errors to prevent app crashes */ }
+      console.log('Hotkey hide-window triggered');
       this.hideChatWindow();
     });
   }
@@ -162,8 +150,8 @@ class MaiBuddyApp {
     ipcMain.handle('get-settings', async () => {
       try {
         const settings = this.store.get('settings', {
-          openaiApiKey: '',
-          elevenLabsApiKey: '',
+          provider: 'openai',
+          apiKey: '',
           model: 'gpt-4',
           voice: 'Rachel',
           autoSpeak: false,
@@ -455,9 +443,31 @@ class MaiBuddyApp {
       }
     }
   }
-
   async activateVoiceMode() {
     await this.voiceService.startListening();
+    this.isListening = true;
+  }
+
+  async toggleListening() {
+    try {
+      if (this.isListening) {
+        this.voiceService.stopListening();
+        this.isListening = false;
+        console.log('Voice listening stopped');
+      } else {
+        await this.voiceService.startListening();
+        this.isListening = true;
+        console.log('Voice listening started');
+      }
+      
+      // Notify renderer process of listening state change
+      if (this.mainWindow) {
+        this.mainWindow.webContents.send('listening-state-changed', this.isListening);
+      }
+    } catch (error) {
+      console.error('Error toggling listening:', error);
+      this.isListening = false;
+    }
   }
 
   showSettings() {
@@ -468,6 +478,45 @@ class MaiBuddyApp {
   showMCPManager() {
     // Implementation for MCP manager window
     console.log('Opening MCP manager...');
+  }
+
+  async captureScreenAndAnalyze() {
+    try {
+      console.log('Starting screen capture...');
+      
+      // Get primary display
+      const primaryDisplay = screen.getPrimaryDisplay();
+      
+      // Capture the primary display
+      const sources = await desktopCapturer.getSources({
+        types: ['screen'],
+        thumbnailSize: { width: primaryDisplay.bounds.width, height: primaryDisplay.bounds.height }
+      });
+      
+      if (sources.length === 0) {
+        console.error('No screen sources found');
+        return;
+      }
+      
+      // Get the screenshot as base64
+      const screenshot = sources[0].thumbnail.toDataURL();
+      
+      // Show the chat window and send the captured image for analysis
+      this.showChatWindow();
+      
+      // Send the screenshot to the renderer process for AI analysis
+      if (this.mainWindow) {
+        this.mainWindow.webContents.send('process-screenshot', {
+          image: screenshot,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      console.log('Screenshot captured and sent for analysis');
+      
+    } catch (error) {
+      console.error('Error during screen capture:', error);
+    }
   }
 }
 
@@ -494,7 +543,7 @@ app.on('window-all-closed', () => {
 app.on('will-quit', async () => {
   globalShortcut.unregisterAll();
   
-  if (global.maiBuddy && global.maiBuddy.mcpManager) {
+  if (global.maiBuddy?.mcpManager) {
     await global.maiBuddy.mcpManager.cleanup();
   }
 });
