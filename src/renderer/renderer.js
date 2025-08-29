@@ -545,8 +545,8 @@ class MaiBuddyRenderer {
                         <span class="capability-tag">${cap}</span>
                       `).join('')}
                       ${(() => {
-                        return conn.capabilities.length > 3 ? `<span class="capability-more">+${conn.capabilities.length - 3}</span>` : '';
-                      })()}
+    return conn.capabilities.length > 3 ? `<span class="capability-more">+${conn.capabilities.length - 3}</span>` : '';
+  })()}
                     </div>
                   ` : ''}
                 </div>
