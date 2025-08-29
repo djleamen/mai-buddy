@@ -391,7 +391,7 @@ User message: ${message}`;
       return null;
     }
 
-    const path = this.extractFilePath(message, lowerMessage, 'read');
+    const path = this.extractFilePath(message, lowerMessage);
     if (!path) {
       return null;
     }
@@ -420,7 +420,7 @@ User message: ${message}`;
            lowerMessage.includes('show me the content');
   }
 
-  extractFilePath(message, lowerMessage, operation) {
+  extractFilePath(message, lowerMessage) {
     const explicitPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/\\w.-]*`, 'i'));
     if (explicitPathMatch) {
       return explicitPathMatch[0];
