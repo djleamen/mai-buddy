@@ -72,7 +72,7 @@ npm run lint    # Run ESLint
 - Be cautious with nodeIntegration and contextIsolation settings
 
 ### MCP Integration
-- As of August 2025, only GitHub and system integrations are fully functional
+- Currently, only GitHub and system integrations are fully functional
 - MCP connections are work in progress - handle gracefully
 - Use WebSocket protocol for MCP communication
 - Store connection configurations in electron-store
@@ -129,7 +129,7 @@ npm run lint    # Run ESLint
 - Test with different configurations (tech context, user context)
 
 ## Known Issues & Notes
-- File paths assume macOS conventions (noted in ai-service.js)
+- File paths in some services (e.g., ai-service.js) use forward slashes and assume Unix-like conventions; when adding cross-platform features, use `path.join()` or `path.resolve()` for compatibility
 - Some MCP connections are placeholders awaiting implementation
 - Voice features require system permissions and may need platform-specific handling
 - Global shortcuts may conflict with other applications
