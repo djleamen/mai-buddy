@@ -32,7 +32,48 @@ class AIService {
       });
     }
 
-    this.conversationHistory = this.store.get('conversationHistory', []);
+    // Load and validate conversation history
+    const storedHistory = this.store.get('conversationHistory', []);
+    this.conversationHistory = this.validateConversationHistory(storedHistory);
+    
+    // If history was corrupted, save the cleaned version
+    if (this.conversationHistory.length !== storedHistory.length) {
+      console.log('Cleaned corrupted conversation history');
+      this.saveConversationHistory();
+    }
+  }
+
+  // Validate and clean conversation history
+  validateConversationHistory(history) {
+    const cleaned = [];
+    
+    for (let i = 0; i < history.length; i++) {
+      const msg = history[i];
+      
+      // Skip messages with null or undefined content (unless they have tool_calls)
+      if (!msg.content && !msg.tool_calls) {
+        console.log(`Skipping message ${i} with null content`);
+        continue;
+      }
+      
+      // Skip tool messages that don't have a preceding assistant message with tool_calls
+      if (msg.role === 'tool') {
+        const prevMsg = cleaned[cleaned.length - 1];
+        if (!prevMsg || prevMsg.role !== 'assistant' || !prevMsg.tool_calls) {
+          console.log(`Skipping orphaned tool message ${i}`);
+          continue;
+        }
+      }
+      
+      // Ensure content is never null
+      if (msg.role === 'assistant' && !msg.content) {
+        msg.content = '';
+      }
+      
+      cleaned.push(msg);
+    }
+    
+    return cleaned;
   }
 
   // Process a user message and return AI response
@@ -68,13 +109,28 @@ class AIService {
         includeUserContext: needsUserContext
       });
 
-      // Prepare messages for API call
+      // Prepare messages for API call - filter out any invalid messages
+      const validHistory = this.conversationHistory.slice(-10).filter(msg => {
+        // Keep messages that have valid content OR are assistant messages with tool_calls
+        return (msg.content && msg.content !== null) || 
+               (msg.role === 'assistant' && msg.tool_calls);
+      }).map(msg => {
+        // For OpenAI API, only include role and content (strip timestamps and other fields)
+        const apiMsg = {
+          role: msg.role,
+          content: msg.content || '' // Ensure content is never null
+        };
+        
+        // Include tool_calls and tool_call_id if they exist
+        if (msg.tool_calls) apiMsg.tool_calls = msg.tool_calls;
+        if (msg.tool_call_id) apiMsg.tool_call_id = msg.tool_call_id;
+        
+        return apiMsg;
+      });
+      
       const messages = [
         { role: 'system', content: this.systemPrompt },
-        ...this.conversationHistory.slice(-10).map(msg => ({
-          role: msg.role,
-          content: msg.content
-        }))
+        ...validHistory
       ];
 
       const completion = await this.openai.chat.completions.create({
@@ -85,7 +141,7 @@ class AIService {
         stream: false
       });
 
-      const response = completion.choices[0].message.content;
+      const response = completion.choices[0].message.content || 'I processed your request.';
 
       this.conversationHistory.push({
         role: 'assistant',
@@ -152,13 +208,14 @@ class AIService {
       }
     }
 
-    // Add conversation history
-    this.conversationHistory.push({
-      role: 'user',
-      content: message
-    });
-
     try {
+      // Add user message to history
+      this.conversationHistory.push({
+        role: 'user',
+        content: message,
+        timestamp: new Date().toISOString()
+      });
+
       const completion = await this.openai.chat.completions.create({
         model: this.store.get('settings.model', 'gpt-4'),
         messages: [
@@ -175,8 +232,13 @@ class AIService {
       if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
         console.log(`GPT requested ${responseMessage.tool_calls.length} tool call(s)`);
         
-        // Add assistant's message with tool calls to history
-        this.conversationHistory.push(responseMessage);
+        // Add assistant's message with tool calls to history (ensure content is never null)
+        this.conversationHistory.push({
+          role: 'assistant',
+          content: responseMessage.content || '',
+          tool_calls: responseMessage.tool_calls,
+          timestamp: new Date().toISOString()
+        });
 
         for (const toolCall of responseMessage.tool_calls) {
           const functionName = toolCall.function.name;
@@ -227,7 +289,8 @@ class AIService {
             this.conversationHistory.push({
               role: 'tool',
               tool_call_id: toolCall.id,
-              content: resultContent
+              content: resultContent,
+              timestamp: new Date().toISOString()
             });
 
             console.log('✅ Tool executed successfully');
@@ -236,7 +299,8 @@ class AIService {
             this.conversationHistory.push({
               role: 'tool',
               tool_call_id: toolCall.id,
-              content: JSON.stringify({ error: error.message })
+              content: JSON.stringify({ error: error.message }),
+              timestamp: new Date().toISOString()
             });
           }
         }
@@ -250,10 +314,11 @@ class AIService {
           ]
         });
 
-        const finalResponse = finalCompletion.choices[0].message.content;
+        const finalResponse = finalCompletion.choices[0].message.content || 'I completed the requested task.';
         this.conversationHistory.push({
           role: 'assistant',
-          content: finalResponse
+          content: finalResponse,
+          timestamp: new Date().toISOString()
         });
 
         this.saveConversationHistory();
@@ -271,7 +336,8 @@ class AIService {
       // No tools called, just return the response
       this.conversationHistory.push({
         role: 'assistant',
-        content: responseMessage.content
+        content: responseMessage.content || 'I understand your request.',
+        timestamp: new Date().toISOString()
       });
 
       this.saveConversationHistory();
@@ -284,11 +350,28 @@ class AIService {
     } catch (error) {
       console.error('Error in MCP-enhanced processing:', error);
       
-      // Remove the failed user message if it exists
+      // Clean up conversation history to maintain valid state
+      // Remove any trailing tool messages first
+      while (this.conversationHistory.length > 0 && 
+             this.conversationHistory[this.conversationHistory.length - 1].role === 'tool') {
+        this.conversationHistory.pop();
+      }
+      
+      // Remove assistant message with tool_calls if it exists
+      if (this.conversationHistory.length > 0 && 
+          this.conversationHistory[this.conversationHistory.length - 1].role === 'assistant' &&
+          this.conversationHistory[this.conversationHistory.length - 1].tool_calls) {
+        this.conversationHistory.pop();
+      }
+      
+      // Remove the user message that caused the error
       if (this.conversationHistory.length > 0 && 
           this.conversationHistory[this.conversationHistory.length - 1].role === 'user') {
         this.conversationHistory.pop();
       }
+      
+      // Save cleaned up history
+      this.saveConversationHistory();
       
       // Rate limit error
       if (error.status === 429 || error.code === 'rate_limit_exceeded') {

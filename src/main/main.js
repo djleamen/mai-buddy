@@ -17,6 +17,7 @@ class MaiBuddyApp {
     this.store = new Store();
     this.mainWindow = null;
     this.chatWindow = null;
+    this.terminalWindow = null;
     this.tray = null;
     this.aiService = new AIService();
     this.voiceService = new VoiceService();
@@ -355,56 +356,6 @@ class MaiBuddyApp {
       }
     });
 
-    ipcMain.handle('get-mcp-connections', async () => {
-      try {
-        const connections = this.mcpManager.getConnections();
-        return connections;
-      } catch (error) {
-        console.error('Error getting MCP connections:', error);
-        return [];
-      }
-    });
-
-    ipcMain.handle('get-available-mcp-types', async () => {
-      try {
-        const types = this.mcpManager.getAvailableConnectionTypes();
-        return types;
-      } catch (error) {
-        console.error('Error getting available MCP types:', error);
-        return [];
-      }
-    });
-
-    ipcMain.handle('add-mcp-connection', async (event, connection) => {
-      try {
-        const result = await this.mcpManager.addConnection(connection);
-        return { success: true, result };
-      } catch (error) {
-        console.error('Error adding MCP connection:', error);
-        return { success: false, error: error.message };
-      }
-    });
-
-    ipcMain.handle('remove-mcp-connection', async (event, connectionId) => {
-      try {
-        const result = await this.mcpManager.removeConnection(connectionId);
-        return { success: true, result };
-      } catch (error) {
-        console.error('Error removing MCP connection:', error);
-        return { success: false, error: error.message };
-      }
-    });
-
-    ipcMain.handle('test-mcp-connection', async (event, connectionId) => {
-      try {
-        const result = await this.mcpManager.testConnection(connectionId);
-        return { success: true, result };
-      } catch (error) {
-        console.error('Error testing MCP connection:', error);
-        return { success: false, error: error.message };
-      }
-    });
-
     // Window management
     ipcMain.handle('hide-window', () => {
       this.hideChatWindow();
@@ -501,6 +452,90 @@ class MaiBuddyApp {
     }
   }
 
+  // Create and show terminal output window
+  createTerminalWindow() {
+    if (this.terminalWindow) {
+      this.terminalWindow.close();
+    }
+
+    this.terminalWindow = new BrowserWindow({
+      width: 800,
+      height: 600,
+      show: true,
+      frame: true,
+      resizable: true,
+      title: 'Mai Buddy - Terminal Output',
+      backgroundColor: '#1e1e1e',
+      webPreferences: {
+        nodeIntegration: true,
+        contextIsolation: false
+      }
+    });
+
+    // Create simple HTML for terminal window
+    const terminalHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body {
+            margin: 0;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+          }
+          #output {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+          }
+          .command {
+            color: #4ec9b0;
+            margin-bottom: 10px;
+          }
+          .error {
+            color: #f48771;
+          }
+        </style>
+      </head>
+      <body>
+        <div id="output"></div>
+        <script>
+          const { ipcRenderer } = require('electron');
+          const output = document.getElementById('output');
+          
+          ipcRenderer.on('terminal-output', (event, data) => {
+            output.textContent = data;
+            window.scrollTo(0, document.body.scrollHeight);
+          });
+          
+          ipcRenderer.on('terminal-command', (event, command) => {
+            const cmdDiv = document.createElement('div');
+            cmdDiv.className = 'command';
+            cmdDiv.textContent = '$ ' + command;
+            output.appendChild(cmdDiv);
+            window.scrollTo(0, document.body.scrollHeight);
+          });
+          
+          ipcRenderer.on('terminal-clear', () => {
+            output.textContent = '';
+          });
+        </script>
+      </body>
+      </html>
+    `;
+
+    this.terminalWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(terminalHTML));
+
+    this.terminalWindow.on('closed', () => {
+      this.terminalWindow = null;
+    });
+
+    return this.terminalWindow;
+  }
+
   // Capture the screen and send for AI analysis
   async captureScreenAndAnalyze() {
     try {
@@ -549,6 +584,8 @@ class MaiBuddyApp {
   const maiBuddy = new MaiBuddyApp();
   await maiBuddy.initialize();
 
+  // Make available globally for terminal window access
+  global.maiBuddy = maiBuddy;
   globalThis.maiBuddy = maiBuddy;
 
   app.on('activate', () => {

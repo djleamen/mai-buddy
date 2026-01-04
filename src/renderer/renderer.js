@@ -216,8 +216,11 @@ class MaiBuddyRenderer {
       this.updateConnectionStatus();
       
       try {
-        this.mcpConnections = await ipcRenderer.invoke('get-mcp-connections');
-        this.updateMCPCount();
+        const result = await ipcRenderer.invoke('mcp-get-connections');
+        if (result.success) {
+          this.mcpConnections = result.connections;
+          this.updateMCPCount();
+        }
       } catch (error) {
         console.error('Error loading MCP connections:', error);
         this.mcpConnections = [];

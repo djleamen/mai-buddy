@@ -110,12 +110,25 @@ class MCPTools {
         type: 'object',
         properties: {
           command: { type: 'string', description: 'Command to execute' },
-          cwd: { type: 'string', description: 'Working directory (optional)' }
+          cwd: { type: 'string', description: 'Working directory (optional)' },
+          showTerminal: { type: 'boolean', description: 'Show live terminal output window', default: true }
         },
         required: ['command']
       },
-      handler: async ({ command, cwd }) => {
+      handler: async ({ command, cwd, showTerminal = true }) => {
         try {
+          // Get main process reference for terminal window
+          const { BrowserWindow } = require('electron');
+          let terminalWindow = null;
+          
+          // Create terminal window if showTerminal is true
+          if (showTerminal && global.maiBuddy) {
+            terminalWindow = global.maiBuddy.createTerminalWindow();
+            terminalWindow.webContents.once('did-finish-load', () => {
+              terminalWindow.webContents.send('terminal-command', command);
+            });
+          }
+          
           const options = cwd ? { cwd } : {};
           
           // If the command is a script file, check if it's executable
@@ -129,13 +142,44 @@ class MCPTools {
             }
           }
           
-          const { stdout, stderr } = await execAsync(command, options);
-          return { 
-            success: true, 
-            stdout: stdout.trim(), 
-            stderr: stderr.trim(),
-            command: command 
-          };
+          // Execute command with streaming output
+          const { spawn } = require('child_process');
+          const child = spawn('bash', ['-c', command], options);
+          
+          let stdout = '';
+          let stderr = '';
+          
+          // Stream stdout
+          child.stdout.on('data', (data) => {
+            const text = data.toString();
+            stdout += text;
+            if (terminalWindow && !terminalWindow.isDestroyed()) {
+              terminalWindow.webContents.send('terminal-output', stdout);
+            }
+          });
+          
+          // Stream stderr
+          child.stderr.on('data', (data) => {
+            const text = data.toString();
+            stderr += text;
+            if (terminalWindow && !terminalWindow.isDestroyed()) {
+              terminalWindow.webContents.send('terminal-output', stdout + '\n' + stderr);
+            }
+          });
+          
+          // Wait for completion
+          return new Promise((resolve) => {
+            child.on('close', (code) => {
+              resolve({
+                success: code === 0,
+                stdout: stdout.trim(),
+                stderr: stderr.trim(),
+                command: command,
+                exitCode: code,
+                terminalWindowShown: showTerminal
+              });
+            });
+          });
         } catch (error) {
           return { 
             success: false, 
