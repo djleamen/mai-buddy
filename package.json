@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Mai Buddy is a highly customizable, personal AI agent",
   "main": "src/main/main.js",
+  "type": "commonjs",
   "scripts": {
     "start": "electron .",
     "dev": "concurrently \"npm run watch\" \"electron .\"",

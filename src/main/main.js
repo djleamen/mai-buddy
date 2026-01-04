@@ -420,6 +420,12 @@ class MaiBuddyApp {
       this.showMCPManager();
       return { success: true };
     });
+
+    ipcMain.handle('quit-app', () => {
+      this.isQuitting = true;
+      app.quit();
+      return { success: true };
+    });
   }
 
   // Show the main chat window
@@ -480,10 +486,20 @@ class MaiBuddyApp {
   }
 
   // Show settings window
-  showSettings() {}
+  showSettings() {
+    if (this.mainWindow) {
+      this.mainWindow.show();
+      this.mainWindow.webContents.send('show-settings');
+    }
+  }
 
   // Show MCP manager window
-  showMCPManager() {}
+  showMCPManager() {
+    if (this.mainWindow) {
+      this.mainWindow.show();
+      this.mainWindow.webContents.send('show-mcp-manager');
+    }
+  }
 
   // Capture the screen and send for AI analysis
   async captureScreenAndAnalyze() {
@@ -527,31 +543,33 @@ class MaiBuddyApp {
 }
 
 // App event handlers
-app.whenReady().then(async () => {
+(async () => {
+  await app.whenReady();
+
   const maiBuddy = new MaiBuddyApp();
   await maiBuddy.initialize();
-  
-  global.maiBuddy = maiBuddy;
+
+  globalThis.maiBuddy = maiBuddy;
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       maiBuddy.createMainWindow();
     }
   });
-});
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
+  });
 
-app.on('will-quit', async () => {
-  globalShortcut.unregisterAll();
-  
-  if (global.maiBuddy?.mcpManager) {
-    await global.maiBuddy.mcpManager.cleanup();
-  }
-});
+  app.on('will-quit', async () => {
+    globalShortcut.unregisterAll();
+    
+    if (globalThis.maiBuddy?.mcpManager) {
+      await globalThis.maiBuddy.mcpManager.cleanup();
+    }
+  });
+})();
 
 module.exports = { MaiBuddyApp };

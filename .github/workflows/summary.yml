@@ -19,11 +19,14 @@ jobs:
       - name: Run AI inference
         id: inference
         uses: actions/ai-inference@v1
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
         with:
           prompt: |
             Summarize the following GitHub issue in one paragraph:
-            Title: ${{ github.event.issue.title }}
-            Body: ${{ github.event.issue.body }}
+            Title: $ISSUE_TITLE
+            Body: $ISSUE_BODY
 
       - name: Comment with AI summary
         run: |

@@ -10,7 +10,7 @@ fi
 
 # Check Node.js version
 NODE_VERSION=$(node -v | cut -d 'v' -f 2 | cut -d '.' -f 1)
-if [ "$NODE_VERSION" -lt 18 ]; then
+if [[ "$NODE_VERSION" -lt 18 ]]; then
     echo "❌ Node.js version $NODE_VERSION is too old. Please install Node.js 18+."
     exit 1
 fi
@@ -21,7 +21,7 @@ echo "✅ Node.js $(node -v) found"
 echo "📦 Installing dependencies..."
 npm install
 
-if [ $? -eq 0 ]; then
+if [[ $? -eq 0 ]]; then
     echo "✅ Dependencies installed successfully"
 else
     echo "❌ Failed to install dependencies"
@@ -29,7 +29,7 @@ else
 fi
 
 # Create .env file if it doesn't exist
-if [ ! -f .env ]; then
+if [[ ! -f .env ]]; then
     echo "📝 Creating .env file..."
     cp .env.example .env
     echo "✅ Created .env file. Please edit it with your API keys."

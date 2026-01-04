@@ -26,6 +26,7 @@ class MaiBuddyRenderer {
     // Title bar elements
     this.settingsBtn = document.getElementById('settingsBtn');
     this.minimizeBtn = document.getElementById('minimizeBtn');
+    this.quitBtn = document.getElementById('quitBtn');
     
     // Connection status elements
     this.connectionStatus = document.getElementById('connectionStatus');
@@ -50,6 +51,7 @@ class MaiBuddyRenderer {
     // Title bar buttons
     this.settingsBtn.addEventListener('click', () => this.showSettings());
     this.minimizeBtn.addEventListener('click', () => this.hideWindow());
+    this.quitBtn.addEventListener('click', () => this.quitApp());
     
     // MCP button
     this.mcpBtn.addEventListener('click', () => this.showMCPManager());
@@ -79,6 +81,21 @@ class MaiBuddyRenderer {
     this.setupMCPModal();
     
     this.autoResizeTextarea();
+    
+    // Setup IPC listeners from main process
+    this.setupIPCListeners();
+  }
+  
+  setupIPCListeners() {
+    // Listen for show-settings event from main process
+    ipcRenderer.on('show-settings', () => {
+      this.showSettings();
+    });
+    
+    // Listen for show-mcp-manager event from main process
+    ipcRenderer.on('show-mcp-manager', () => {
+      this.showMCPManager();
+    });
   }
 
   setupChatScrolling() {
@@ -874,6 +891,10 @@ class MaiBuddyRenderer {
   hideWindow() {
     // This would be handled by the main process
     ipcRenderer.invoke('hide-window');
+  }
+
+  quitApp() {
+    ipcRenderer.invoke('quit-app');
   }
 }
 
