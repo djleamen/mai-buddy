@@ -7,6 +7,7 @@ const WebSocket = require('ws');
 const { v4: uuidv4 } = require('uuid');
 const { MCPTools } = require('./mcp-tools');
 
+// MCPServer class to handle MCP connections and requests
 class MCPServer {
   constructor(port = 3001) {
     this.port = port;
@@ -17,6 +18,7 @@ class MCPServer {
     this.setupRequestHandlers();
   }
 
+  // Setup request handlers for MCP methods
   setupRequestHandlers() {
     this.requestHandlers.set('tools/list', async (params) => {
       const connectionType = params.connection_type || 'filesystem';
@@ -64,6 +66,7 @@ class MCPServer {
     });
   }
 
+  // Start the MCP server
   async start() {
     this.server = new WebSocket.Server({ 
       port: this.port,
@@ -108,7 +111,7 @@ class MCPServer {
 
       ws.on('close', () => {
         this.clients.delete(clientId);
-        console.log(`📡 MCP Client disconnected: ${clientId}`);
+        console.log(`MCP Client disconnected: ${clientId}`);
       });
 
       ws.on('error', (error) => {
@@ -117,10 +120,11 @@ class MCPServer {
       });
     });
 
-    console.log(`🚀 MCP Server started on ws://localhost:${this.port}`);
+    console.log(`MCP Server started on ws://localhost:${this.port}`);
     return this.port;
   }
 
+  // Handle incoming MCP messages
   async handleMessage(message, client) {
     const { jsonrpc, id, method, params } = message;
 
@@ -156,12 +160,14 @@ class MCPServer {
     }
   }
 
+  // Send a JSON-RPC message to a client
   sendMessage(client, message) {
     if (client.ws.readyState === WebSocket.OPEN) {
       client.ws.send(JSON.stringify(message));
     }
   }
 
+  // Send a JSON-RPC error response to a client
   sendError(client, id, error) {
     this.sendMessage(client, {
       jsonrpc: '2.0',
@@ -173,12 +179,14 @@ class MCPServer {
     });
   }
 
+  // Broadcast a message to all connected clients
   broadcast(message) {
     for (const client of this.clients.values()) {
       this.sendMessage(client, message);
     }
   }
 
+  // Stop the MCP server
   stop() {
     if (this.server) {
       this.server.close();
@@ -186,6 +194,7 @@ class MCPServer {
     }
   }
 
+  // Get list of connected clients
   getConnectedClients() {
     return Array.from(this.clients.values()).map(client => ({
       id: client.id,
@@ -194,10 +203,12 @@ class MCPServer {
     }));
   }
 
+  // Register a tool for a specific connection type
   registerTool(connectionType, toolName, toolDefinition) {
     this.tools.registerTool(connectionType, toolName, toolDefinition);
   }
 
+  // Get tools available for a specific connection type
   getToolsForConnection(connectionType) {
     return this.tools.getToolsListForConnection(connectionType);
   }

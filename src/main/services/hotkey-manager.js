@@ -7,6 +7,7 @@
 const { globalShortcut } = require('electron');
 const Store = require('electron-store');
 
+// HotkeyManager class to manage global hotkeys
 class HotkeyManager {
   constructor() {
     this.store = new Store();
@@ -20,6 +21,7 @@ class HotkeyManager {
     };
   }
 
+  // Initialize and register hotkeys from store or defaults
   async initialize() {
     const customHotkeys = this.store.get('customHotkeys', {});
     const hotkeys = { ...this.defaultHotkeys, ...customHotkeys };
@@ -29,6 +31,7 @@ class HotkeyManager {
     }
   }
 
+  // Register a global hotkey with optional callback
   async registerHotkey(action, shortcut, callback = null) {
     try {
       if (this.registeredHotkeys.has(action)) {
@@ -58,6 +61,7 @@ class HotkeyManager {
     }
   }
 
+  // Unregister a global hotkey
   unregisterHotkey(action) {
     if (this.registeredHotkeys.has(action)) {
       const shortcut = this.registeredHotkeys.get(action);
@@ -69,6 +73,7 @@ class HotkeyManager {
     return false;
   }
 
+  // Handle hotkey action by emitting corresponding IPC events
   handleHotkeyAction(action) {
     const { ipcMain } = require('electron');
     
@@ -103,6 +108,7 @@ class HotkeyManager {
     this.store.set('customHotkeys', customHotkeys);
   }
 
+  // Reset all hotkeys to their default values
   resetToDefaults() {
     for (const [action] of this.registeredHotkeys) {
       this.unregisterHotkey(action);
@@ -115,6 +121,7 @@ class HotkeyManager {
     }
   }
 
+  // Validate if a shortcut string is in correct format
   isValidShortcut(shortcut) {
     // Basic validation for Electron accelerator format
     const validModifiers = ['CommandOrControl', 'Alt', 'Option', 'AltGr', 'Shift', 'Super', 'Meta'];
@@ -159,6 +166,7 @@ class HotkeyManager {
     return specialKeys.includes(key);
   }
 
+  // Get list of available modifier keys for shortcuts
   getAvailableModifiers() {
     return [
       'CommandOrControl',
@@ -168,6 +176,7 @@ class HotkeyManager {
     ];
   }
 
+  // Get list of available keys for shortcuts
   getAvailableKeys() {
     return [
       // Letters
@@ -184,6 +193,7 @@ class HotkeyManager {
     ];
   }
 
+  // Cleanup all registered hotkeys
   cleanup() {
     for (const [action] of this.registeredHotkeys) {
       this.unregisterHotkey(action);

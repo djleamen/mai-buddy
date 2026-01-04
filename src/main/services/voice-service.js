@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
+// VoiceService class to manage TTS and speech recognition
 class VoiceService {
   constructor() {
     this.store = new Store();
@@ -19,6 +20,7 @@ class VoiceService {
     this.speechRecognition = null;
   }
 
+  // Initialize the VoiceService
   async initialize() {
     const settings = this.store.get('settings', {});
     
@@ -31,6 +33,7 @@ class VoiceService {
     await this.setupSpeechRecognition();
   }
 
+  // Setup speech recognition using Web Speech API
   async setupSpeechRecognition() {
     try {
       // Check if running in browser environment
@@ -51,13 +54,14 @@ class VoiceService {
         };
       } else {
         // Fallback for Node.js environment
-        console.log('Web Speech API not available, using fallback speech recognition');
+        // Web Speech API not available in Electron main process
       }
     } catch (error) {
       console.error('Error setting up speech recognition:', error);
     }
   }
 
+  // Convert text to speech using ElevenLabs API
   async textToSpeech(text, options = {}) {
     if (!this.elevenLabs) {
       throw new Error('ElevenLabs API key not configured. Please set it in settings.');
@@ -103,6 +107,7 @@ class VoiceService {
     }
   }
 
+  // Play audio file using system default player
   async playAudio(audioPath) {
     return new Promise((resolve, reject) => {
       let player;
@@ -130,6 +135,7 @@ class VoiceService {
     });
   }
 
+  // Start listening for voice input
   async startListening() {
     if (this.speechRecognition && !this.isListening) {
       try {
@@ -143,6 +149,7 @@ class VoiceService {
     }
   }
 
+  // Stop listening for voice input
   stopListening() {
     if (this.speechRecognition && this.isListening) {
       this.speechRecognition.stop();
@@ -151,10 +158,12 @@ class VoiceService {
     }
   }
 
+  // Register a trigger word with a callback
   onTriggerWord(phrase, callback) {
     this.triggerWords.set(phrase.toLowerCase(), callback);
   }
 
+  // Process recognized transcript for trigger words
   processTranscript(transcript) {
     console.log('Transcript:', transcript);
     
@@ -168,6 +177,7 @@ class VoiceService {
     }
   }
 
+  // Get available voices from ElevenLabs
   async getAvailableVoices() {
     if (!this.elevenLabs) {
       return [];
@@ -188,16 +198,19 @@ class VoiceService {
     }
   }
 
+  // Ensure a directory exists, create if it doesn't
   async ensureDirectoryExists(dirPath) {
     if (!fs.existsSync(dirPath)) {
       fs.mkdirSync(dirPath, { recursive: true });
     }
   }
 
+  // Set voice settings in store
   setVoiceSettings(settings) {
     this.store.set('voiceSettings', settings);
   }
 
+  // Get voice settings from store
   getVoiceSettings() {
     return this.store.get('voiceSettings', {
       voice: 'Rachel',

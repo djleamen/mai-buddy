@@ -11,6 +11,7 @@ const { VoiceService } = require('./services/voice-service');
 const { MCPManager } = require('./services/mcp-manager');
 const { HotkeyManager } = require('./services/hotkey-manager');
 
+// MaiBuddyApp class to encapsulate the main application logic
 class MaiBuddyApp {
   constructor() {
     this.store = new Store();
@@ -25,6 +26,7 @@ class MaiBuddyApp {
     this.isListening = false;
   }
 
+  // Initialize the application
   async initialize() {
     await this.createMainWindow();
     await this.createTray();
@@ -33,6 +35,7 @@ class MaiBuddyApp {
     this.setupIpcHandlers();
   }
 
+  // Create the main chat window
   async createMainWindow() {
     this.mainWindow = new BrowserWindow({
       width: 400,
@@ -67,6 +70,7 @@ class MaiBuddyApp {
     });
   }
 
+  // Create system tray icon and menu
   async createTray() {
     const iconPath = path.join(__dirname, '../../assets/tray-icon.png');
     const trayIcon = nativeImage.createFromPath(iconPath);
@@ -103,6 +107,7 @@ class MaiBuddyApp {
     });
   }
 
+  // Initialize all services
   async setupServices() {
     await this.aiService.initialize();
     await this.voiceService.initialize();
@@ -145,6 +150,7 @@ class MaiBuddyApp {
     });
   }
 
+  // Setup IPC handlers for communication between renderer and main process
   setupIpcHandlers() {
     // Settings handlers
     ipcMain.handle('get-settings', async () => {
@@ -189,7 +195,7 @@ class MaiBuddyApp {
         const response = await this.aiService.processWithMCP(message, this.mcpManager);
         
         if (response.toolExecuted) {
-          console.log('🔧 Tool executed successfully:', response.toolResult);
+          console.log('Tool executed successfully:', response.toolResult);
         } else if (response.toolError) {
           console.log('❌ Tool execution failed:', response.toolError);
         }
@@ -416,24 +422,24 @@ class MaiBuddyApp {
     });
   }
 
+  // Show the main chat window
   showChatWindow() {
-    console.log('showChatWindow called');
     if (this.mainWindow) {
-      console.log('Main window exists, showing...');
       this.mainWindow.show();
       this.mainWindow.focus();
-      console.log('Window shown and focused');
     } else {
       console.log('Main window does not exist!');
     }
   }
 
+  // Hide the main chat window
   hideChatWindow() {
     if (this.mainWindow) {
       this.mainWindow.hide();
     }
   }
 
+  // Toggle the visibility of the chat window
   toggleChatWindow() {
     if (this.mainWindow) {
       if (this.mainWindow.isVisible()) {
@@ -443,11 +449,14 @@ class MaiBuddyApp {
       }
     }
   }
+
+  // Activate voice mode by starting listening
   async activateVoiceMode() {
     await this.voiceService.startListening();
     this.isListening = true;
   }
 
+  // Toggle listening state
   async toggleListening() {
     try {
       if (this.isListening) {
@@ -470,16 +479,13 @@ class MaiBuddyApp {
     }
   }
 
-  showSettings() {
-    // Implementation for settings window
-    console.log('Opening settings...');
-  }
+  // Show settings window
+  showSettings() {}
 
-  showMCPManager() {
-    // Implementation for MCP manager window
-    console.log('Opening MCP manager...');
-  }
+  // Show MCP manager window
+  showMCPManager() {}
 
+  // Capture the screen and send for AI analysis
   async captureScreenAndAnalyze() {
     try {
       console.log('Starting screen capture...');

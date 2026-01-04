@@ -10,6 +10,7 @@ const axios = require('axios');
 const { MCPTools } = require('./mcp-tools');
 const { MCPServer } = require('./mcp-server');
 
+// MCPManager class to handle MCP connections and tools
 class MCPManager {
   constructor() {
     this.store = new Store();
@@ -20,6 +21,7 @@ class MCPManager {
     this.isLocalServerRunning = false;
   }
 
+  // Initialize MCPManager by starting local server and restoring connections
   async initialize() {
     await this.startLocalServer();
     
@@ -392,6 +394,7 @@ class MCPManager {
     ];
   }
 
+  // Add a new connection and optionally save it
   async addConnection(connectionData, save = true) {
     const connection = {
       id: connectionData.id || uuidv4(),
@@ -416,6 +419,7 @@ class MCPManager {
     }
   }
 
+  // Establish a connection based on its type
   async establishConnection(connection) {
     switch (connection.type) {
     case 'api':
@@ -435,6 +439,7 @@ class MCPManager {
     }
   }
 
+  // Connect to an API endpoint
   async connectToAPI(connection) {
     try {
       const headers = {};
@@ -462,6 +467,7 @@ class MCPManager {
     }
   }
 
+  // Connect to a WebSocket endpoint
   async connectToWebSocket(connection) {
     return new Promise((resolve, reject) => {
       try {
@@ -498,6 +504,7 @@ class MCPManager {
     });
   }
 
+  // Connect to a database
   async connectToDatabase(connection) {
     // Database connections would require specific database drivers
     // This is a placeholder implementation
@@ -523,6 +530,7 @@ class MCPManager {
     return false;
   }
 
+  // Disconnect an active connection
   async disconnectConnection(connection) {
     if (connection.client) {
       if (connection.type === 'websocket') {
@@ -534,6 +542,7 @@ class MCPManager {
     connection.status = 'disconnected';
   }
 
+  // Test a connection by its ID
   async testConnection(connectionId) {
     const connection = this.connections.get(connectionId);
     
@@ -549,6 +558,7 @@ class MCPManager {
     }
   }
 
+  // Get all connections with their details
   getConnections() {
     return Array.from(this.connections.values()).map(conn => ({
       id: conn.id,
@@ -561,10 +571,12 @@ class MCPManager {
     }));
   }
 
+  // Get available connection types
   getAvailableConnectionTypes() {
     return this.availableConnections;
   }
 
+  // Save all connections to persistent storage
   saveConnections() {
     const connectionsData = Array.from(this.connections.values()).map(conn => ({
       id: conn.id,
@@ -583,6 +595,7 @@ class MCPManager {
     this.store.set('mcpConnections', connectionsData);
   }
 
+  // Send an MCP message over a connection
   async sendMCPMessage(connectionId, message, method = 'tools/call') {
     const connection = this.connections.get(connectionId);
     
@@ -623,6 +636,7 @@ class MCPManager {
     throw new Error('Unsupported connection type for MCP messaging');
   }
 
+  // Start the local MCP server
   async startLocalServer() {
     if (!this.isLocalServerRunning && !this.localServer) {
       try {
@@ -638,6 +652,7 @@ class MCPManager {
     }
   }
 
+  // Stop the local MCP server
   async stopLocalServer() {
     if (this.localServer && this.isLocalServerRunning) {
       this.localServer.stop();
@@ -647,6 +662,7 @@ class MCPManager {
     }
   }
 
+  // Add default local connections for file system and terminal
   async addDefaultLocalConnections() {
     const defaultConnections = [
       {
@@ -671,6 +687,7 @@ class MCPManager {
       }
     ];
 
+    // Add default local connections if they don't exist
     for (const connectionData of defaultConnections) {
       if (!this.connections.has(connectionData.id)) {
         try {
@@ -683,6 +700,7 @@ class MCPManager {
     }
   }
 
+  // Execute a tool over a specific connection
   async executeTool(connectionId, toolName, parameters) {
     const connection = this.connections.get(connectionId);
     
@@ -713,7 +731,9 @@ class MCPManager {
     throw new Error('Tool execution not supported for this connection type');
   }
 
-  // Configuration methods for GitHub
+  /* Configuration methods for GitHub */
+
+  // Set GitHub API token and update connection
   setGitHubToken(token) {
     this.tools.setGitHubToken(token);
     
@@ -726,6 +746,7 @@ class MCPManager {
     }
   }
 
+  // Connect to GitHub with provided token
   async connectGitHub(token) {
     try {
       this.setGitHubToken(token);
@@ -775,6 +796,8 @@ class MCPManager {
     
     return connections;
   }
+
+  // Determine connection type from endpoint
   getConnectionTypeFromEndpoint(endpoint) {
     if (endpoint.includes('filesystem')) return 'filesystem';
     if (endpoint.includes('terminal')) return 'terminal';
@@ -782,6 +805,7 @@ class MCPManager {
     return 'filesystem';
   }
 
+  // Get available tools for a specific connection
   async getAvailableTools(connectionId) {
     const connection = this.connections.get(connectionId);
     
@@ -809,6 +833,7 @@ class MCPManager {
     return [];
   }
 
+  // Test connection with a ping message
   async testConnectionWithPing(connectionId) {
     const connection = this.connections.get(connectionId);
     
@@ -828,6 +853,7 @@ class MCPManager {
     return await this.testConnection(connectionId);
   }
 
+  // Get statistics about current connections
   getConnectionStats() {
     const stats = {
       total: this.connections.size,
@@ -850,6 +876,7 @@ class MCPManager {
     return stats;
   }
 
+  // Reconnect all disconnected connections
   async reconnectAll() {
     const results = [];
     
@@ -867,6 +894,7 @@ class MCPManager {
     return results;
   }
 
+  // Cleanup all connections and stop local server
   async cleanup() {
     for (const connection of this.connections.values()) {
       await this.disconnectConnection(connection);

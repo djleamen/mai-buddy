@@ -7,9 +7,23 @@ const fs = require('fs').promises;
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const { ToolHandlers } = require('./tool-handlers');
+const path = require('path');
+const os = require('os');
 
 const execAsync = promisify(exec);
 
+// Helper function to expand ~ in paths
+function expandPath(filePath) {
+  if (filePath.startsWith('~/')) {
+    return path.join(os.homedir(), filePath.slice(2));
+  }
+  if (filePath === '~') {
+    return os.homedir();
+  }
+  return filePath;
+}
+
+// MCPTools class to manage tool registrations and executions
 class MCPTools {
   constructor() {
     this.tools = new Map();
@@ -21,8 +35,9 @@ class MCPTools {
     this.registerDefaultTools();
   }
 
+  // Register default tools for various connection types
   registerDefaultTools() {
-    // File System Tools
+    /* File System Tools */
     this.registerTool('filesystem', 'read_file', {
       description: 'Read content from a file',
       parameters: {
@@ -34,7 +49,8 @@ class MCPTools {
       },
       handler: async ({ path: filePath }) => {
         try {
-          const content = await fs.readFile(filePath, 'utf8');
+          const expandedPath = expandPath(filePath);
+          const content = await fs.readFile(expandedPath, 'utf8');
           return { success: true, content };
         } catch (error) {
           return { success: false, error: error.message };
@@ -54,7 +70,8 @@ class MCPTools {
       },
       handler: async ({ path: filePath, content }) => {
         try {
-          await fs.writeFile(filePath, content, 'utf8');
+          const expandedPath = expandPath(filePath);
+          await fs.writeFile(expandedPath, content, 'utf8');
           return { success: true, message: 'File written successfully' };
         } catch (error) {
           return { success: false, error: error.message };
@@ -73,7 +90,8 @@ class MCPTools {
       },
       handler: async ({ path: dirPath }) => {
         try {
-          const items = await fs.readdir(dirPath, { withFileTypes: true });
+          const expandedPath = expandPath(dirPath);
+          const items = await fs.readdir(expandedPath, { withFileTypes: true });
           const contents = items.map(item => ({
             name: item.name,
             type: item.isDirectory() ? 'directory' : 'file'
@@ -85,7 +103,7 @@ class MCPTools {
       }
     });
 
-    // Terminal Tools
+    /* Terminal Tools */
     this.registerTool('terminal', 'execute_command', {
       description: 'Execute a shell command',
       parameters: {
@@ -130,7 +148,7 @@ class MCPTools {
       }
     });
 
-    // GitHub Tools - Full API Integration
+    /* GitHub Tools */
     this.registerTool('github', 'list_repositories', {
       description: 'List user repositories',
       parameters: {
@@ -267,7 +285,7 @@ class MCPTools {
       }
     });
 
-    // System Calendar Tools (fallback for local calendar)
+    /* System Calendar Tools (fallback for local calendar) */
     this.registerTool('calendar', 'create_event', {
       description: 'Create a system calendar event (fallback)',
       parameters: {
@@ -280,7 +298,7 @@ class MCPTools {
         },
         required: ['title', 'start', 'end']
       },
-      handler: async ({ title, start, end, description }) => {
+      handler: async ({ title, start, end }) => {
         return { 
           success: true, 
           message: `Would create event "${title}" from ${start} to ${end}`,
@@ -289,7 +307,7 @@ class MCPTools {
       }
     });
 
-    // Notion Tools (examples)
+    /* Notion Tools */
     this.registerTool('notion', 'query_database', {
       description: 'Query a Notion database',
       parameters: {
@@ -301,16 +319,72 @@ class MCPTools {
         },
         required: ['database_id']
       },
-      handler: async ({ database_id }) => {
-        return { 
-          success: true, 
-          message: `Would query Notion database ${database_id}`,
-          note: 'This requires proper Notion API integration'
-        };
+      handler: async (params) => {
+        return await this.toolHandlers.handleNotionTools('query_database', params);
       }
     });
 
-    // Slack Tools (examples)
+    this.registerTool('notion', 'create_page', {
+      description: 'Create a new Notion page',
+      parameters: {
+        type: 'object',
+        properties: {
+          parent: { type: 'object', description: 'Parent page or database' },
+          properties: { type: 'object', description: 'Page properties' },
+          children: { type: 'array', description: 'Page content blocks' }
+        },
+        required: ['parent', 'properties']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleNotionTools('create_page', params);
+      }
+    });
+
+    this.registerTool('notion', 'get_page', {
+      description: 'Get a Notion page by ID',
+      parameters: {
+        type: 'object',
+        properties: {
+          page_id: { type: 'string', description: 'Page ID' }
+        },
+        required: ['page_id']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleNotionTools('get_page', params);
+      }
+    });
+
+    this.registerTool('notion', 'update_page', {
+      description: 'Update a Notion page',
+      parameters: {
+        type: 'object',
+        properties: {
+          page_id: { type: 'string', description: 'Page ID' },
+          properties: { type: 'object', description: 'Page properties to update' }
+        },
+        required: ['page_id', 'properties']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleNotionTools('update_page', params);
+      }
+    });
+
+    this.registerTool('notion', 'search', {
+      description: 'Search Notion workspace',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'Search query' },
+          filter: { type: 'object', description: 'Filter by page or database' }
+        },
+        required: ['query']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleNotionTools('search', params);
+      }
+    });
+
+    /* Slack Tools */
     this.registerTool('slack', 'send_message', {
       description: 'Send a message to a Slack channel',
       parameters: {
@@ -322,16 +396,273 @@ class MCPTools {
         },
         required: ['channel', 'text']
       },
-      handler: async ({ channel, text }) => {
-        return { 
-          success: true, 
-          message: `Would send message to ${channel}: "${text}"`,
-          note: 'This requires proper Slack API integration'
-        };
+      handler: async (params) => {
+        return await this.toolHandlers.handleSlackTools('send_message', params);
+      }
+    });
+
+    this.registerTool('slack', 'list_channels', {
+      description: 'List Slack channels',
+      parameters: {
+        type: 'object',
+        properties: {
+          types: { type: 'string', description: 'Channel types to list', default: 'public_channel,private_channel' }
+        }
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleSlackTools('list_channels', params);
+      }
+    });
+
+    this.registerTool('slack', 'get_channel_history', {
+      description: 'Get channel message history',
+      parameters: {
+        type: 'object',
+        properties: {
+          channel: { type: 'string', description: 'Channel ID' },
+          limit: { type: 'number', description: 'Number of messages to retrieve', default: 100 }
+        },
+        required: ['channel']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleSlackTools('get_channel_history', params);
+      }
+    });
+
+    this.registerTool('slack', 'upload_file', {
+      description: 'Upload a file to Slack',
+      parameters: {
+        type: 'object',
+        properties: {
+          channels: { type: 'string', description: 'Comma-separated channel IDs' },
+          file: { type: 'string', description: 'File path or content' },
+          filename: { type: 'string', description: 'Filename' },
+          title: { type: 'string', description: 'File title' }
+        },
+        required: ['channels', 'file', 'filename']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleSlackTools('upload_file', params);
+      }
+    });
+
+    this.registerTool('slack', 'list_users', {
+      description: 'List Slack workspace users',
+      parameters: {
+        type: 'object',
+        properties: {}
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleSlackTools('list_users', params);
+      }
+    });
+
+    /* Docker Tools */
+    this.registerTool('docker', 'list_containers', {
+      description: 'List Docker containers',
+      parameters: {
+        type: 'object',
+        properties: {
+          all: { type: 'boolean', description: 'Show all containers (default shows running only)', default: false }
+        }
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleDockerTools('list_containers', params);
+      }
+    });
+
+    this.registerTool('docker', 'list_images', {
+      description: 'List Docker images',
+      parameters: {
+        type: 'object',
+        properties: {
+          all: { type: 'boolean', description: 'Show all images', default: false }
+        }
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleDockerTools('list_images', params);
+      }
+    });
+
+    this.registerTool('docker', 'container_info', {
+      description: 'Get detailed container information',
+      parameters: {
+        type: 'object',
+        properties: {
+          container_id: { type: 'string', description: 'Container ID or name' }
+        },
+        required: ['container_id']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleDockerTools('container_info', params);
+      }
+    });
+
+    this.registerTool('docker', 'start_container', {
+      description: 'Start a Docker container',
+      parameters: {
+        type: 'object',
+        properties: {
+          container_id: { type: 'string', description: 'Container ID or name' }
+        },
+        required: ['container_id']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleDockerTools('start_container', params);
+      }
+    });
+
+    this.registerTool('docker', 'stop_container', {
+      description: 'Stop a Docker container',
+      parameters: {
+        type: 'object',
+        properties: {
+          container_id: { type: 'string', description: 'Container ID or name' }
+        },
+        required: ['container_id']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleDockerTools('stop_container', params);
+      }
+    });
+
+    this.registerTool('docker', 'remove_container', {
+      description: 'Remove a Docker container',
+      parameters: {
+        type: 'object',
+        properties: {
+          container_id: { type: 'string', description: 'Container ID or name' },
+          force: { type: 'boolean', description: 'Force removal', default: false }
+        },
+        required: ['container_id']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleDockerTools('remove_container', params);
+      }
+    });
+
+    this.registerTool('docker', 'container_logs', {
+      description: 'Get container logs',
+      parameters: {
+        type: 'object',
+        properties: {
+          container_id: { type: 'string', description: 'Container ID or name' },
+          tail: { type: 'number', description: 'Number of lines to show from the end', default: 100 }
+        },
+        required: ['container_id']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleDockerTools('container_logs', params);
+      }
+    });
+
+    this.registerTool('docker', 'pull_image', {
+      description: 'Pull a Docker image',
+      parameters: {
+        type: 'object',
+        properties: {
+          image_name: { type: 'string', description: 'Image name (e.g., nginx:latest)' }
+        },
+        required: ['image_name']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleDockerTools('pull_image', params);
+      }
+    });
+
+    /* Enhanced File System Tools */
+    this.registerTool('filesystem', 'search_files', {
+      description: 'Search for files by pattern (returns max 100 results by default)',
+      parameters: {
+        type: 'object',
+        properties: {
+          directory: { type: 'string', description: 'Directory to search in' },
+          pattern: { type: 'string', description: 'File pattern (e.g., *.js, test*, C*)' },
+          recursive: { type: 'boolean', description: 'Search recursively', default: true },
+          maxResults: { type: 'number', description: 'Maximum number of results to return', default: 100 }
+        },
+        required: ['directory', 'pattern']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleFileSystemTools('search_files', params);
+      }
+    });
+
+    this.registerTool('filesystem', 'get_file_stats', {
+      description: 'Get file or directory statistics',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'File or directory path' }
+        },
+        required: ['path']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleFileSystemTools('get_file_stats', params);
+      }
+    });
+
+    this.registerTool('filesystem', 'create_directory', {
+      description: 'Create a new directory',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Directory path to create' },
+          recursive: { type: 'boolean', description: 'Create parent directories', default: true }
+        },
+        required: ['path']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleFileSystemTools('create_directory', params);
+      }
+    });
+
+    this.registerTool('filesystem', 'delete_file', {
+      description: 'Delete a file or directory',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: 'Path to delete' }
+        },
+        required: ['path']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleFileSystemTools('delete_file', params);
+      }
+    });
+
+    this.registerTool('filesystem', 'copy_file', {
+      description: 'Copy a file',
+      parameters: {
+        type: 'object',
+        properties: {
+          source: { type: 'string', description: 'Source file path' },
+          destination: { type: 'string', description: 'Destination file path' }
+        },
+        required: ['source', 'destination']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleFileSystemTools('copy_file', params);
+      }
+    });
+
+    this.registerTool('filesystem', 'move_file', {
+      description: 'Move or rename a file',
+      parameters: {
+        type: 'object',
+        properties: {
+          source: { type: 'string', description: 'Source file path' },
+          destination: { type: 'string', description: 'Destination file path' }
+        },
+        required: ['source', 'destination']
+      },
+      handler: async (params) => {
+        return await this.toolHandlers.handleFileSystemTools('move_file', params);
       }
     });
   }
 
+  // Register a tool for a specific connection type
   registerTool(connectionType, toolName, toolDefinition) {
     if (!this.tools.has(connectionType)) {
       this.tools.set(connectionType, new Map());
@@ -339,10 +670,12 @@ class MCPTools {
     this.tools.get(connectionType).set(toolName, toolDefinition);
   }
 
+  // Get tools available for a specific connection type
   getToolsForConnection(connectionType) {
     return this.tools.get(connectionType) || new Map();
   }
 
+  // Get all registered tools
   getAllTools() {
     const allTools = {};
     for (const [connectionType, tools] of this.tools) {
@@ -351,6 +684,7 @@ class MCPTools {
     return allTools;
   }
 
+  // Execute a tool with given parameters
   async executeTool(connectionType, toolName, parameters) {
     const tools = this.getToolsForConnection(connectionType);
     const tool = tools.get(toolName);
@@ -366,6 +700,7 @@ class MCPTools {
     }
   }
 
+  // Get tool definition for a specific connection type and tool name
   getToolDefinition(connectionType, toolName) {
     const tools = this.getToolsForConnection(connectionType);
     const tool = tools.get(toolName);
@@ -381,6 +716,7 @@ class MCPTools {
     };
   }
 
+  // Get list of tool definitions for a connection type
   getToolsListForConnection(connectionType) {
     const tools = this.getToolsForConnection(connectionType);
     return Array.from(tools.keys()).map(toolName => 

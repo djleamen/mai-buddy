@@ -8,6 +8,7 @@ const Store = require('electron-store');
 const { PromptManager } = require('./prompts/prompt-manager');
 require('dotenv').config();
 
+// AI Service to handle OpenAI interactions and conversation management
 class AIService {
   constructor() {
     this.store = new Store();
@@ -21,6 +22,7 @@ class AIService {
     });
   }
 
+  // Initialize OpenAI client and load conversation history
   async initialize() {
     const settings = this.store.get('settings', {});
     
@@ -30,10 +32,10 @@ class AIService {
       });
     }
 
-    // Load conversation history
     this.conversationHistory = this.store.get('conversationHistory', []);
   }
 
+  // Process a user message and return AI response
   async processMessage(message, options = {}) {
     if (!this.openai) {
       throw new Error('OpenAI API key not configured. Please set it in settings.');
@@ -105,9 +107,9 @@ class AIService {
     }
   }
 
+  // Process message with MCP tool integration
   async processWithMCP(message, mcpManager = null) {
     if (!mcpManager) {
-      // Fall back to regular processing if no MCP manager
       return await this.processMessage(message);
     }
 
@@ -118,129 +120,215 @@ class AIService {
       return await this.processMessage(message);
     }
 
-    // Enhanced processing with MCP tool integration
-    const mcpContext = activeConnections.map(conn => ({
-      name: conn.name,
-      description: conn.description,
-      capabilities: conn.capabilities,
-      category: conn.category
-    }));
-
-    const availableTools = {};
+    // Get available tools and format for OpenAI function calling
+    const toolsForOpenAI = [];
+    const toolMapping = new Map(); // Maps function names to connection info
+    
     for (const conn of activeConnections) {
       try {
         const tools = await mcpManager.getAvailableTools(conn.id);
-        if (tools.length > 0) {
-          availableTools[conn.name] = tools.map(tool => ({
-            name: tool.name,
-            description: tool.description,
-            connectionId: conn.id
-          }));
+        for (const tool of tools) {
+          const functionName = `${conn.name.toLowerCase().replace(/\s+/g, '_')}_${tool.name}`;
+          toolsForOpenAI.push({
+            type: 'function',
+            function: {
+              name: functionName,
+              description: `${tool.description} (via ${conn.name})`,
+              parameters: tool.parameters || {
+                type: 'object',
+                properties: {},
+                required: []
+              }
+            }
+          });
+          toolMapping.set(functionName, {
+            connectionId: conn.id,
+            connectionName: conn.name,
+            toolName: tool.name
+          });
         }
       } catch (error) {
         console.error(`Failed to get tools for ${conn.name}:`, error);
       }
     }
 
-    const toolRequest = this.analyzeToolRequest(message, availableTools);
-    
-    if (toolRequest) {
-      try {
-        console.log(`🔧 Executing tool: ${toolRequest.toolName} on ${toolRequest.connectionName}`);
-        const toolResult = await mcpManager.executeTool(
-          toolRequest.connectionId, 
-          toolRequest.toolName, 
-          toolRequest.parameters
-        );
-
-        const enhancedPrompt = `${this.systemPrompt}
-
-I just executed the following tool for you:
-Tool: ${toolRequest.toolName}
-Connection: ${toolRequest.connectionName}
-Parameters: ${JSON.stringify(toolRequest.parameters)}
-
-Tool Result:
-${JSON.stringify(toolResult, null, 2)}
-
-Please provide a helpful response based on this result. Present the information in a user-friendly way.
-
-Original user request: ${message}`;
-
-        const response = await this.processMessage(enhancedPrompt);
-        return {
-          ...response,
-          toolExecuted: true,
-          toolResult: toolResult
-        };
-
-      } catch (error) {
-        console.error('Tool execution failed:', error);
-        
-        // Fall back to explaining what went wrong
-        const errorPrompt = `${this.systemPrompt}
-
-I attempted to execute a tool for the user's request but encountered an error:
-Error: ${error.message}
-
-User request: ${message}
-
-Please acknowledge the error and suggest alternatives or troubleshooting steps.`;
-
-        const response = await this.processMessage(errorPrompt);
-        return {
-          ...response,
-          toolExecuted: false,
-          toolError: error.message
-        };
-      }
-    }
-
-    // No specific tool request detected, provide context about available tools
-    const enhancedPrompt = `${this.systemPrompt}
-
-AVAILABLE MCP CONNECTIONS AND TOOLS:
-${mcpContext.map(mcp => {
-    const tools = availableTools[mcp.name] || [];
-    const toolsList = tools.length > 0 
-      ? tools.map(t => `  - ${t.name}: ${t.description}`).join('\n')
-      : '  No tools available';
-  
-    return `${mcp.name} (${mcp.category}): ${mcp.description}
-${toolsList}`;
-  }).join('\n\n')}
-
-When responding, you can mention that you have access to these tools and services through your MCP integrations. If the user asks you to perform actions that these tools can handle, let them know you can help with that.
-
-User message: ${message}`;
+    // Add conversation history
+    this.conversationHistory.push({
+      role: 'user',
+      content: message
+    });
 
     try {
-      const response = await this.processMessage(enhancedPrompt);
-      
-      // Check if the response mentions any tool usage and log it
-      const mentionedTools = this.detectToolMentions(response.response, availableTools);
-      if (mentionedTools.length > 0) {
-        console.log('🔧 AI mentioned tools:', mentionedTools);
+      const completion = await this.openai.chat.completions.create({
+        model: this.store.get('settings.model', 'gpt-4'),
+        messages: [
+          { role: 'system', content: this.systemPrompt },
+          ...this.conversationHistory
+        ],
+        tools: toolsForOpenAI.length > 0 ? toolsForOpenAI : undefined,
+        tool_choice: toolsForOpenAI.length > 0 ? 'auto' : undefined
+      });
+
+      const responseMessage = completion.choices[0].message;
+
+      // Check if GPT wants to call any tools
+      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+        console.log(`GPT requested ${responseMessage.tool_calls.length} tool call(s)`);
+        
+        // Add assistant's message with tool calls to history
+        this.conversationHistory.push(responseMessage);
+
+        for (const toolCall of responseMessage.tool_calls) {
+          const functionName = toolCall.function.name;
+          const args = JSON.parse(toolCall.function.arguments);
+          
+          const toolInfo = toolMapping.get(functionName);
+          if (!toolInfo) {
+            console.error(`Unknown function: ${functionName}`);
+            continue;
+          }
+
+          console.log(`Executing: ${toolInfo.toolName} on ${toolInfo.connectionName}`);
+          console.log('Parameters:', args);
+
+          try {
+            const result = await mcpManager.executeTool(
+              toolInfo.connectionId,
+              toolInfo.toolName,
+              args
+            );
+
+            // Add tool result to conversation with truncation for large responses
+            let resultContent = JSON.stringify(result);
+            const MAX_RESULT_TOKENS = 5000; // Approximate token limit for tool results (can adjust as needed)
+            const MAX_RESULT_CHARS = MAX_RESULT_TOKENS * 4; // as 1 token ≈ 4 chars
+            
+            if (resultContent.length > MAX_RESULT_CHARS) {
+              console.log(`⚠️ Tool result too large (${resultContent.length} chars), truncating...`);
+              const parsedResult = JSON.parse(resultContent);
+              
+              if (parsedResult.files && Array.isArray(parsedResult.files)) {
+                const fileCount = parsedResult.files.length;
+                const truncatedFiles = parsedResult.files.slice(0, 50);
+                resultContent = JSON.stringify({
+                  success: true,
+                  files: truncatedFiles,
+                  total_count: fileCount,
+                  truncated: fileCount > 50,
+                  message: `Showing first 50 of ${fileCount} files. Use more specific patterns to see all results.`
+                });
+              } else {
+                // Generic truncation
+                resultContent = resultContent.substring(0, MAX_RESULT_CHARS) + 
+                  '... [TRUNCATED: Result too large]';
+              }
+            }
+            
+            this.conversationHistory.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: resultContent
+            });
+
+            console.log('✅ Tool executed successfully');
+          } catch (error) {
+            console.error('❌ Tool execution failed:', error);
+            this.conversationHistory.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({ error: error.message })
+            });
+          }
+        }
+
+        // Get final response from GPT after tool execution
+        const finalCompletion = await this.openai.chat.completions.create({
+          model: this.store.get('settings.model', 'gpt-4'),
+          messages: [
+            { role: 'system', content: this.systemPrompt },
+            ...this.conversationHistory
+          ]
+        });
+
+        const finalResponse = finalCompletion.choices[0].message.content;
+        this.conversationHistory.push({
+          role: 'assistant',
+          content: finalResponse
+        });
+
+        this.saveConversationHistory();
+
+        return {
+          response: finalResponse,
+          model: this.store.get('settings.model', 'gpt-4'),
+          toolsUsed: responseMessage.tool_calls.map(tc => {
+            const info = toolMapping.get(tc.function.name);
+            return info ? `${info.toolName} (${info.connectionName})` : tc.function.name;
+          })
+        };
       }
 
-      return response;
+      // No tools called, just return the response
+      this.conversationHistory.push({
+        role: 'assistant',
+        content: responseMessage.content
+      });
+
+      this.saveConversationHistory();
+
+      return {
+        response: responseMessage.content,
+        model: this.store.get('settings.model', 'gpt-4')
+      };
+
     } catch (error) {
       console.error('Error in MCP-enhanced processing:', error);
-      return await this.processMessage(message);
+      
+      // Remove the failed user message if it exists
+      if (this.conversationHistory.length > 0 && 
+          this.conversationHistory[this.conversationHistory.length - 1].role === 'user') {
+        this.conversationHistory.pop();
+      }
+      
+      // Rate limit error
+      if (error.status === 429 || error.code === 'rate_limit_exceeded') {
+        return {
+          response: 'I apologize, but the result from that tool was too large for me to process. Please try a more specific query or filter your search to reduce the amount of data returned.',
+          model: this.store.get('settings.model', 'gpt-4'),
+          error: true
+        };
+      }
+      
+      // For other errors, try standard processing only if message is valid
+      if (message && typeof message === 'string' && message.trim()) {
+        try {
+          return await this.processMessage(message);
+        } catch (fallbackError) {
+          console.error('Fallback processing also failed:', fallbackError);
+          return {
+            response: 'I encountered an error processing your request. Please try rephrasing your question or breaking it into smaller parts.',
+            model: this.store.get('settings.model', 'gpt-4'),
+            error: true
+          };
+        }
+      }
+      
+      return {
+        response: 'I encountered an error processing your request. Please try again.',
+        model: this.store.get('settings.model', 'gpt-4'),
+        error: true
+      };
     }
   }
 
+  // Analyze if the message is a tool request
   analyzeToolRequest(message, availableTools) {
     const lowerMessage = message.toLowerCase();
-    
-    // Try different tool request types in order
     return this.analyzeCommandRequest(message, lowerMessage, availableTools) ||
-           this.analyzeListDirectoryRequest(message, lowerMessage, availableTools) ||
-           this.analyzeReadFileRequest(message, lowerMessage, availableTools) ||
-           this.analyzeWriteFileRequest(message, lowerMessage, availableTools) ||
            null;
   }
 
+  // Analyze if the message is a command execution request
   analyzeCommandRequest(message, lowerMessage, availableTools) {
     if (!this.isCommandRequest(lowerMessage)) {
       return null;
@@ -269,15 +357,14 @@ User message: ${message}`;
     };
   }
 
+  // Determine if the message is a command request
   isCommandRequest(lowerMessage) {
-    return lowerMessage.includes('run ') || 
-           lowerMessage.includes('execute ') || 
-           lowerMessage.includes('command ') || 
-           lowerMessage.includes('./') ||
-           lowerMessage.includes('.sh') || 
-           lowerMessage.includes('/');
+    return lowerMessage.includes('./') ||
+           lowerMessage.includes('.sh') ||
+           /\b(echo|ls|pwd|cd|mkdir|rm|cat|grep|find|ps|top|curl|wget|git|npm|node|python|python3|brew|apt|yum|docker|cargo|go|rustc)\b/.test(lowerMessage);
   }
 
+  // Extract the command from the message
   extractCommand(message, lowerMessage) {
     const absolutePathMatch = message.match(/\/[\w.-/]+\.sh/);
     if (absolutePathMatch) {
@@ -295,19 +382,18 @@ User message: ${message}`;
       return lowerMessage.includes('root') ? `/${scriptName}` : `${this.userHomePath}/${scriptName}`;
     }
     
-    const quotedMatch = message.match(/['"`]([^'"`]+)['"`]/);
-    if (quotedMatch) {
-      return quotedMatch[1];
-    }
-    
-    const runMatch = message.match(/(?:run|execute)\s+(.+?)(?:\s|$)/i);
-    if (runMatch) {
-      return runMatch[1].trim();
+    const shellCommandMatch = message.match(/\b(echo|ls|pwd|cd|mkdir|rm|rmdir|cp|mv|cat|grep|find|ps|top|curl|wget|git|npm|yarn|pnpm|node|python|python3|ruby|java|javac|gcc|make|cmake|brew|apt|yum|docker|cargo|go|rustc)\s+[^.?!]+/i);
+    if (shellCommandMatch) {
+      let cmd = shellCommandMatch[0].trim();
+      // Remove trailing phrases like "in my terminal"
+      cmd = cmd.replace(/\s+(in|to|on)\s+(my|the)\s+(terminal|console|shell|command line|desktop|folder|directory).*$/i, '');
+      return cmd.trim();
     }
     
     return null;
   }
 
+  // Analyze if the message is a list directory request
   analyzeListDirectoryRequest(message, lowerMessage, availableTools) {
     if (!this.isListDirectoryRequest(lowerMessage)) {
       return null;
@@ -332,6 +418,7 @@ User message: ${message}`;
     };
   }
 
+  // Determine if the message is a list directory request
   isListDirectoryRequest(lowerMessage) {
     return (lowerMessage.includes('list ') && (lowerMessage.includes('files') || lowerMessage.includes('directory') || lowerMessage.includes('folder'))) ||
            (lowerMessage.includes('what\'s in') && (lowerMessage.includes('directory') || lowerMessage.includes('folder') || lowerMessage.includes('root'))) ||
@@ -340,6 +427,7 @@ User message: ${message}`;
            (lowerMessage.includes('list') && lowerMessage.includes(this.userHomePath.toLowerCase()));
   }
 
+  // Extract directory path from the message
   extractDirectoryPath(message, lowerMessage) {
     let path = this.userHomePath;
     
@@ -361,6 +449,7 @@ User message: ${message}`;
     return this.getSpecialDirectoryPath(lowerMessage, message);
   }
 
+  // Get special directory paths based on keywords
   getSpecialDirectoryPath(lowerMessage, message) {
     if (lowerMessage.includes('root') && !lowerMessage.includes('project root')) {
       return this.userHomePath;
@@ -386,6 +475,7 @@ User message: ${message}`;
     return this.userHomePath;
   }
 
+  // Analyze if the message is a read file request
   analyzeReadFileRequest(message, lowerMessage, availableTools) {
     if (!this.isReadFileRequest(lowerMessage)) {
       return null;
@@ -414,28 +504,33 @@ User message: ${message}`;
     };
   }
 
+  // Determine if the message is a read file request
   isReadFileRequest(lowerMessage) {
     return (lowerMessage.includes('read ') && lowerMessage.includes('file')) ||
            (lowerMessage.includes('what\'s in') && (lowerMessage.includes('.txt') || lowerMessage.includes('.js') || lowerMessage.includes('.json') || lowerMessage.includes('.md'))) ||
            lowerMessage.includes('show me the content');
   }
 
+  // Extract file path from the message
   extractFilePath(message, lowerMessage) {
     const explicitPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/\\w.-]*`, 'i'));
     if (explicitPathMatch) {
       return explicitPathMatch[0];
     }
-    
+   
+    // Check for partial user home path
     const fileExtMatch = message.match(/\b([\w.-]+\.(txt|js|json|md|sh|py|html|css))\b/i);
     if (fileExtMatch) {
       return this.getFilePathFromExtension(fileExtMatch[1], lowerMessage);
     }
     
+    // Check for absolute path
     const absolutePathMatch = message.match(/\/[\w.-/]+/);
     if (absolutePathMatch) {
       return absolutePathMatch[0];
     }
     
+    // Check for relative path
     const pathMatch = message.match(/(?:read|in)\s+(?:the\s+)?(?:file\s+)?([^\s]+)/i);
     if (pathMatch) {
       const path = pathMatch[1];
@@ -445,6 +540,7 @@ User message: ${message}`;
     return null;
   }
 
+  // Determine full file path based on keywords
   getFilePathFromExtension(fileName, lowerMessage) {
     if (lowerMessage.includes('root') || lowerMessage.includes('my root')) {
       return `${this.userHomePath}/${fileName}`;
@@ -455,6 +551,7 @@ User message: ${message}`;
     return fileName.startsWith('/') ? fileName : `${this.userHomePath}/${fileName}`;
   }
 
+  // Analyze if the message is a write file request
   analyzeWriteFileRequest(message, lowerMessage, availableTools) {
     if (!this.isWriteFileRequest(lowerMessage)) {
       return null;
@@ -483,6 +580,7 @@ User message: ${message}`;
     };
   }
 
+  // Determine if the message is a write file request
   isWriteFileRequest(lowerMessage) {
     return (lowerMessage.includes('write ') && lowerMessage.includes('file')) ||
            (lowerMessage.includes('create ') && lowerMessage.includes('file')) ||
@@ -490,6 +588,7 @@ User message: ${message}`;
            lowerMessage.includes('make a file');
   }
 
+  // Extract file path and content from the message
   extractWriteFileParams(message, lowerMessage) {
     let path = '';
     let content = '';
@@ -514,6 +613,7 @@ User message: ${message}`;
     return { path, content };
   }
 
+  // Detect tool mentions in the response
   detectToolMentions(response, availableTools) {
     const mentions = [];
     for (const [connectionName, tools] of Object.entries(availableTools)) {
@@ -543,11 +643,13 @@ User message: ${message}`;
     return this.conversationHistory;
   }
 
+  // Update system prompt written by user and save to store
   updateSystemPrompt(newPrompt) {
     this.systemPrompt = newPrompt;
     this.store.set('systemPrompt', newPrompt);
   }
 
+  // Get list of available models (can be expanded in future)
   getAvailableModels() {
     return [
       'gpt-4',
