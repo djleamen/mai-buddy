@@ -1,4 +1,9 @@
-/* Customize your tech stack and expertise for Mai Buddy. */
+/**
+ * Technical configuration for Mai Buddy AI assistant.
+ * Defines tech stack, expertise, and personality traits.
+ * 
+ * Author: DJ Leamen, 2025-2026
+ */
 
 const techConfig = {
   expertise: {

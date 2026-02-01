@@ -1,4 +1,9 @@
-/* Customize your user profile for a personalized experience with Mai Buddy. */
+/**
+ * User-specific configuration for Mai Buddy AI assistant.
+ * Defines personal details, interests, and learning style.
+ * 
+ * Author: DJ Leamen, 2025-2026
+ */
 
 const userConfig = {
   personal: {

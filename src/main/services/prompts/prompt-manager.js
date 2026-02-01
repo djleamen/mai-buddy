@@ -1,22 +1,31 @@
-/*
- * Prompt manager to build the prompt for Mai Buddy.
- * Configurations are separated to improve modularity and maintainability.
+/**
+ * PromptManager service to construct prompts based on various configurations.
+ * Combines base, tech, and user-specific configurations to create tailored prompts.
+ * 
+ * Author: DJ Leamen, 2025-2026
  */
 
 const { baseConfig } = require('./config/base');
 const { techConfig } = require('./config/tech');
 const { userConfig } = require('./config/user');
 
-// PromptManager class to construct prompts based on configurations
 class PromptManager {
   constructor() {
+    /**
+     * Creates a PromptManager instance.
+     * Initializes base, tech, and user configurations.
+     */
     this.baseConfig = baseConfig;
     this.techConfig = techConfig;
     this.userConfig = userConfig;
   }
 
-  // Build the base prompt with role, guidelines, and capabilities
   getBasePrompt() {
+    /**
+     * Builds the base prompt with role, guidelines, and capabilities.
+     * 
+     * @returns {string} The base prompt text.
+     */
     return `${this.baseConfig.role}
 
 IMPORTANT RESPONSE GUIDELINES:
@@ -28,14 +37,22 @@ ${this.baseConfig.capabilities.join('\n')}
 Always be concise but thorough in your responses.`;
   }
 
-  // Build tech expertise prompt
   getTechPrompt() {
+    /**
+     * Builds tech expertise prompt from configuration.
+     * 
+     * @returns {string} The tech expertise prompt text.
+     */
     return `You are an expert in ${this.techConfig.expertise.general.join(', ')}.
 ${this.techConfig.personality}`;
   }
 
-  // Build user context prompt
   getUserContextPrompt() {
+    /**
+     * Constructs a prompt section based on user-specific details.
+     * 
+     * @returns {string} User context prompt section.
+     */
     const { personal, interests, learningStyle } = this.userConfig;
     const interestsText = [
       interests.sports?.length ? `Sports: ${interests.sports.join(', ')}` : '',
@@ -55,6 +72,14 @@ Learning Style: ${learningStyle}`;
   }
 
   constructPrompt(options = {}) {
+    /**
+     * Constructs the full prompt based on specified options.
+     * 
+     * @param {object} options - Options to include tech and user context.
+     * @param {boolean} options.includeTech - Whether to include tech expertise.
+     * @param {boolean} options.includeUserContext - Whether to include user context.
+     * @returns {string} The constructed prompt.
+     */
     const sections = [this.getBasePrompt()];
     
     if (options.includeTech) {

@@ -1,6 +1,8 @@
-/*
- * This file contains the AIService class, which handles communication with the OpenAI API
- * and manages conversation history. Note that this file assumes macOS file paths.
+/**
+ * AI Service Module
+ * Handles OpenAI interactions, conversation management, and MCP tool integration.
+ * 
+ * Author: DJ Leamen, 2025-2026
  */
 
 const OpenAI = require('openai');
@@ -8,9 +10,12 @@ const Store = require('electron-store');
 const { PromptManager } = require('./prompts/prompt-manager');
 require('dotenv').config();
 
-// AI Service to handle OpenAI interactions and conversation management
 class AIService {
   constructor() {
+    /**
+     * Creates an AIService instance.
+     * Initializes OpenAI client, conversation history, and prompt manager.
+     */
     this.store = new Store();
     this.openai = null;
     this.conversationHistory = [];
@@ -22,8 +27,14 @@ class AIService {
     });
   }
 
-  // Initialize OpenAI client and load conversation history
   async initialize() {
+    /**
+     * Initializes the OpenAI client and loads conversation history.
+     * Validates and cleans conversation history from storage.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     const settings = this.store.get('settings', {});
     
     if (settings.openaiApiKey) {
@@ -43,8 +54,13 @@ class AIService {
     }
   }
 
-  // Validate and clean conversation history
   validateConversationHistory(history) {
+    /**
+     * Cleans the conversation history by removing invalid messages.
+     * 
+     * @param {Array} history - The conversation history array.
+     * @returns {Array} Cleaned conversation history.
+     */
     const cleaned = [];
     
     for (let i = 0; i < history.length; i++) {
@@ -76,8 +92,14 @@ class AIService {
     return cleaned;
   }
 
-  // Process a user message and return AI response
   async processMessage(message, options = {}) {
+    /**
+     * Processes a user message and returns AI response.
+     * 
+     * @param {string} message - The user message to process.
+     * @param {object} options - Additional options for processing.
+     * @returns {object} AI response and metadata.
+     */
     if (!this.openai) {
       throw new Error('OpenAI API key not configured. Please set it in settings.');
     }
@@ -163,8 +185,14 @@ class AIService {
     }
   }
 
-  // Process message with MCP tool integration
   async processWithMCP(message, mcpManager = null) {
+    /**
+     * Processes a user message with MCP tool integration.
+     * 
+     * @param {string} message - The user message to process.
+     * @param {MCPManager|null} mcpManager - The MCP Manager instance.
+     * @returns {object} AI response and metadata.
+     */
     if (!mcpManager) {
       return await this.processMessage(message);
     }
@@ -404,15 +432,28 @@ class AIService {
     }
   }
 
-  // Analyze if the message is a tool request
   analyzeToolRequest(message, availableTools) {
+    /**
+     * Analyzes the message to determine if it is a tool request.
+     * 
+     * @param {string} message - The user message to analyze.
+     * @param {object} availableTools - The available MCP tools.
+     * @return {object|null} Tool call details or null if no tool request detected.
+     */
     const lowerMessage = message.toLowerCase();
     return this.analyzeCommandRequest(message, lowerMessage, availableTools) ||
            null;
   }
 
-  // Analyze if the message is a command execution request
   analyzeCommandRequest(message, lowerMessage, availableTools) {
+    /**
+     * Analyzes if the message is a command execution request.
+     * 
+     * @param {string} message - The user message.
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @param {object} availableTools - The available MCP tools.
+     * @return {object|null} Tool call details or null.
+     */
     if (!this.isCommandRequest(lowerMessage)) {
       return null;
     }
@@ -440,15 +481,26 @@ class AIService {
     };
   }
 
-  // Determine if the message is a command request
   isCommandRequest(lowerMessage) {
+    /**
+     * Checks if the message indicates a command execution request.
+     * 
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @return {boolean} True if it's a command request, else false.
+     */
     return lowerMessage.includes('./') ||
            lowerMessage.includes('.sh') ||
            /\b(echo|ls|pwd|cd|mkdir|rm|cat|grep|find|ps|top|curl|wget|git|npm|node|python|python3|brew|apt|yum|docker|cargo|go|rustc)\b/.test(lowerMessage);
   }
 
-  // Extract the command from the message
   extractCommand(message, lowerMessage) {
+    /**
+     * Extracts the command to execute from the message.
+     * 
+     * @param {string} message - The user message.
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @return {string|null} The extracted command or null if none found.
+     */
     const absolutePathMatch = message.match(/\/[\w.-/]+\.sh/);
     if (absolutePathMatch) {
       return absolutePathMatch[0];
@@ -476,8 +528,15 @@ class AIService {
     return null;
   }
 
-  // Analyze if the message is a list directory request
   analyzeListDirectoryRequest(message, lowerMessage, availableTools) {
+    /**
+     * Analyzes if the message is a list directory request.
+     * 
+     * @param {string} message - The user message.
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @param {object} availableTools - The available MCP tools.
+     * @return {object|null} Tool call details or null.
+     */
     if (!this.isListDirectoryRequest(lowerMessage)) {
       return null;
     }
@@ -501,8 +560,13 @@ class AIService {
     };
   }
 
-  // Determine if the message is a list directory request
   isListDirectoryRequest(lowerMessage) {
+    /**
+     * Checks if the message indicates a directory listing request.
+     * 
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @return {boolean} True if it's a list directory request, else false.
+     */
     return (lowerMessage.includes('list ') && (lowerMessage.includes('files') || lowerMessage.includes('directory') || lowerMessage.includes('folder'))) ||
            (lowerMessage.includes('what\'s in') && (lowerMessage.includes('directory') || lowerMessage.includes('folder') || lowerMessage.includes('root'))) ||
            lowerMessage.includes('list them') ||
@@ -510,8 +574,14 @@ class AIService {
            (lowerMessage.includes('list') && lowerMessage.includes(this.userHomePath.toLowerCase()));
   }
 
-  // Extract directory path from the message
   extractDirectoryPath(message, lowerMessage) {
+    /**
+     * Extracts the directory path from the message.
+     * 
+     * @param {string} message - The user message.
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @return {string} The extracted directory path.
+     */
     let path = this.userHomePath;
     
     const userPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/\\w.-]*`, 'i'));
@@ -532,8 +602,14 @@ class AIService {
     return this.getSpecialDirectoryPath(lowerMessage, message);
   }
 
-  // Get special directory paths based on keywords
   getSpecialDirectoryPath(lowerMessage, message) {
+    /**
+     * Determines special directory paths like Desktop, Downloads, etc.
+     * 
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @param {string} message - The original user message.
+     * @return {string} The determined directory path.
+     */
     if (lowerMessage.includes('root') && !lowerMessage.includes('project root')) {
       return this.userHomePath;
     }
@@ -558,8 +634,15 @@ class AIService {
     return this.userHomePath;
   }
 
-  // Analyze if the message is a read file request
   analyzeReadFileRequest(message, lowerMessage, availableTools) {
+    /**
+     * Analyzes if the message is a read file request.
+     * 
+     * @param {string} message - The user message.
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @param {object} availableTools - The available MCP tools.
+     * @return {object|null} Tool call details or null.
+     */
     if (!this.isReadFileRequest(lowerMessage)) {
       return null;
     }
@@ -587,15 +670,26 @@ class AIService {
     };
   }
 
-  // Determine if the message is a read file request
   isReadFileRequest(lowerMessage) {
+    /**
+     * Checks if the message indicates a read file request.
+     * 
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @return {boolean} True if it's a read file request, else false.
+     */
     return (lowerMessage.includes('read ') && lowerMessage.includes('file')) ||
            (lowerMessage.includes('what\'s in') && (lowerMessage.includes('.txt') || lowerMessage.includes('.js') || lowerMessage.includes('.json') || lowerMessage.includes('.md'))) ||
            lowerMessage.includes('show me the content');
   }
 
-  // Extract file path from the message
   extractFilePath(message, lowerMessage) {
+    /**
+     * Extracts the file path from the user message.
+     * 
+     * @param {string} message - The original user message.
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @return {string|null} The extracted file path or null if not found.
+     */
     const explicitPathMatch = message.match(new RegExp(`${this.userHomePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[/\\w.-]*`, 'i'));
     if (explicitPathMatch) {
       return explicitPathMatch[0];
@@ -623,8 +717,14 @@ class AIService {
     return null;
   }
 
-  // Determine full file path based on keywords
   getFilePathFromExtension(fileName, lowerMessage) {
+    /**
+     * Determines the full file path based on keywords in the message.
+     * 
+     * @param {string} fileName - The file name with extension.
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @return {string} The full file path.
+     */
     if (lowerMessage.includes('root') || lowerMessage.includes('my root')) {
       return `${this.userHomePath}/${fileName}`;
     }
@@ -634,8 +734,15 @@ class AIService {
     return fileName.startsWith('/') ? fileName : `${this.userHomePath}/${fileName}`;
   }
 
-  // Analyze if the message is a write file request
   analyzeWriteFileRequest(message, lowerMessage, availableTools) {
+    /**
+     * Analyzes if the message is a write file request and extracts parameters.
+     * 
+     * @param {string} message - The original user message.
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @param {object} availableTools - The available MCP tools.
+     * @return {object|null} Tool call details or null if no tool request detected.
+     */
     if (!this.isWriteFileRequest(lowerMessage)) {
       return null;
     }
@@ -663,16 +770,27 @@ class AIService {
     };
   }
 
-  // Determine if the message is a write file request
   isWriteFileRequest(lowerMessage) {
+    /**
+     * Checks if the message indicates a write file request.
+     * 
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @return {boolean} True if it's a write file request, else false.
+     */
     return (lowerMessage.includes('write ') && lowerMessage.includes('file')) ||
            (lowerMessage.includes('create ') && lowerMessage.includes('file')) ||
            lowerMessage.includes('create it') ||
            lowerMessage.includes('make a file');
   }
 
-  // Extract file path and content from the message
   extractWriteFileParams(message, lowerMessage) {
+    /**
+     * Extracts the file path and content from the user message.
+     * 
+     * @param {string} message - The original user message.
+     * @param {string} lowerMessage - The user message in lowercase.
+     * @return {object} An object containing the path and content.
+     */
     let path = '';
     let content = '';
     
@@ -696,8 +814,14 @@ class AIService {
     return { path, content };
   }
 
-  // Detect tool mentions in the response
   detectToolMentions(response, availableTools) {
+    /**
+     * Detects mentions of tools in the AI response.
+     * 
+     * @param {string} response - The AI response message.
+     * @param {object} availableTools - The available MCP tools.
+     * @return {Array} List of mentioned tools with connection info.
+     */
     const mentions = [];
     for (const [connectionName, tools] of Object.entries(availableTools)) {
       for (const tool of tools) {
@@ -711,11 +835,22 @@ class AIService {
   }
 
   clearConversationHistory() {
+    /**
+     * Clears the conversation history and saves to storage.
+     * 
+     * @returns {void}
+     */
     this.conversationHistory = [];
     this.saveConversationHistory();
   }
 
   saveConversationHistory() {
+    /**
+     * Saves conversation history to storage.
+     * Keeps only the last 50 messages to prevent storage bloat.
+     * 
+     * @returns {void}
+     */
     // Keep only last 50 messages to prevent storage bloat
     const trimmedHistory = this.conversationHistory.slice(-50);
     this.store.set('conversationHistory', trimmedHistory);
@@ -723,17 +858,31 @@ class AIService {
   }
 
   getConversationHistory() {
+    /**
+     * Gets the current conversation history.
+     * 
+     * @returns {Array<Object>} The conversation history array.
+     */
     return this.conversationHistory;
   }
 
-  // Update system prompt written by user and save to store
   updateSystemPrompt(newPrompt) {
+    /**
+     * Updates the system prompt and saves it to storage.
+     * 
+     * @param {string} newPrompt - The new system prompt text.
+     * @returns {void}
+     */
     this.systemPrompt = newPrompt;
     this.store.set('systemPrompt', newPrompt);
   }
 
-  // Get list of available models (can be expanded in future)
   getAvailableModels() {
+    /**
+     * Gets list of available OpenAI models.
+     * 
+     * @returns {Array<string>} Array of available model names.
+     */
     return [
       'gpt-4',
       'gpt-4-turbo',

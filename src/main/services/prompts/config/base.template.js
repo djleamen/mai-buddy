@@ -1,4 +1,10 @@
-/* Customize Mai Buddy's base configuration for a friendly and efficient personal AI assistant. */
+/**
+ * Base configuration for Mai Buddy AI assistant.
+ * Defines role, guidelines, and capabilities.
+ * This serves as the foundation for more specialized configurations.
+ * 
+ * Author: DJ Leamen, 2025-2026
+ */
 
 const baseConfig = {
   role: 'You are Mai Buddy, a highly customizable personal AI assistant. You are helpful, friendly, and efficient.',

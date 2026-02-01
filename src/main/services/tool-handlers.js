@@ -1,6 +1,8 @@
-/*
- * Tool Handlers for MCP connections
- * Provides actual implementations for GitHub and other services
+/**
+ * Tool Handlers for MCP Server
+ * Provides implementations for various tool integrations
+ * 
+ * Author: DJ Leamen, 2025-2026
  */
 
 const { Octokit } = require('@octokit/rest');
@@ -12,9 +14,16 @@ const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
 
-// ToolHandlers class to manage various tool integrations
+/**
+ * ToolHandlers class to manage various tool integrations.
+ * Provides implementations for GitHub, Docker, Notion, Slack, and filesystem operations.
+ */
 class ToolHandlers {
   constructor() {
+    /**
+     * Creates a ToolHandlers instance.
+     * Initializes storage and client instances for various services.
+     */
     this.store = new Store();
     this.githubClient = null;
     this.dockerClient = null;
@@ -22,8 +31,13 @@ class ToolHandlers {
     this.slackClient = null;
   }
 
-  // Helper function to expand ~ in paths
   expandPath(filePath) {
+    /**
+     * Expands tilde (~) in file paths to the user's home directory.
+     * 
+     * @param {string} filePath - The file path to expand.
+     * @returns {string} The expanded file path.
+     */
     if (filePath.startsWith('~/')) {
       return path.join(os.homedir(), filePath.slice(2));
     }
@@ -33,19 +47,36 @@ class ToolHandlers {
     return filePath;
   }
 
-  // Initialize all clients
   async initialize() {
+    /**
+     * Initializes the tool handlers.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     await this.initializeClients();
   }
+
   async initializeClients() {
+    /**
+     * Initializes all service clients (GitHub, Docker, Notion, Slack).
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     await this.initializeGitHub();
     await this.initializeDocker();
     await this.initializeNotion();
     await this.initializeSlack();
   }
 
-  // GitHub Initialization
   async initializeGitHub() {
+    /**
+     * Initializes the GitHub Octokit client with stored token.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     const settings = this.store.get('settings', {});
     if (settings.githubToken) {
       this.githubClient = new Octokit({
@@ -54,8 +85,13 @@ class ToolHandlers {
     }
   }
 
-  // Docker Initialization
   async initializeDocker() {
+    /**
+     * Initializes the Docker client.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     try {
       this.dockerClient = new Docker();
       await this.dockerClient.ping();
@@ -65,8 +101,13 @@ class ToolHandlers {
     }
   }
 
-  // Notion Initialization
   async initializeNotion() {
+    /**
+     * Initializes the Notion client with stored token.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     const settings = this.store.get('settings', {});
     if (settings.notionToken) {
       this.notionClient = new NotionClient({
@@ -75,16 +116,29 @@ class ToolHandlers {
     }
   }
 
-  // Slack Initialization
   async initializeSlack() {
+    /**
+     * Initializes the Slack client with stored token.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     const settings = this.store.get('settings', {});
     if (settings.slackToken) {
       this.slackClient = new SlackClient(settings.slackToken);
     }
   }
 
-  /* GitHub Tool Handlers */
   async handleGitHubTools(toolName, parameters) {
+    /**
+     * Handles GitHub tool execution by routing to specific handlers.
+     * 
+     * @async
+     * @param {string} toolName - The GitHub tool name to execute.
+     * @param {Object} parameters - The parameters for the tool.
+     * @returns {Promise<any>} The result of the tool execution.
+     * @throws {Error} If GitHub not configured or tool unknown.
+     */
     if (!this.githubClient) {
       throw new Error('GitHub not configured. Please set GitHub token in settings.');
     }
@@ -111,8 +165,18 @@ class ToolHandlers {
     }
   }
 
-  // List repositories for a user
   async listRepositories({ username, type = 'all', sort = 'updated', per_page = 30 }) {
+    /**
+     * Lists repositories for a GitHub user.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.username - GitHub username.
+     * @param {string} [params.type='all'] - Repository type filter.
+     * @param {string} [params.sort='updated'] - Sort order.
+     * @param {number} [params.per_page=30] - Results per page.
+     * @returns {Promise<Object>} Result object with success status and repositories.
+     */
     try {
       const { data } = await this.githubClient.rest.repos.listForUser({
         username,
@@ -143,8 +207,20 @@ class ToolHandlers {
     }
   }
 
-  // Create a new issue in a repository
   async createIssue({ owner, repo, title, body, labels = [], assignees = [] }) {
+    /**
+     * Creates a new issue in a GitHub repository.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.owner - Repository owner.
+     * @param {string} params.repo - Repository name.
+     * @param {string} params.title - Issue title.
+     * @param {string} params.body - Issue description.
+     * @param {Array<string>} [params.labels=[]] - Issue labels.
+     * @param {Array<string>} [params.assignees=[]] - Issue assignees.
+     * @returns {Promise<Object>} Result object with success status and issue details.
+     */
     try {
       const { data } = await this.githubClient.rest.issues.create({
         owner,
@@ -173,8 +249,16 @@ class ToolHandlers {
     }
   }
 
-  // Get repository details
   async getRepository({ owner, repo }) {
+    /**
+     * Gets details of a GitHub repository.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.owner - Repository owner.
+     * @param {string} params.repo - Repository name.
+     * @returns {Promise<Object>} Result object with success status and repository details.
+     */
     try {
       const { data } = await this.githubClient.rest.repos.get({
         owner,
@@ -205,8 +289,19 @@ class ToolHandlers {
     }
   }
 
-  // List issues in a repository
   async listIssues({ owner, repo, state = 'open', sort = 'updated', per_page = 30 }) {
+    /**
+     * Lists issues in a GitHub repository.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.owner - Repository owner.
+     * @param {string} params.repo - Repository name.
+     * @param {string} [params.state='open'] - Issue state filter.
+     * @param {string} [params.sort='updated'] - Sort order.
+     * @param {number} [params.per_page=30] - Results per page.
+     * @returns {Promise<Object>} Result object with success status and issues list.
+     */
     try {
       const { data } = await this.githubClient.rest.issues.listForRepo({
         owner,
@@ -236,8 +331,20 @@ class ToolHandlers {
     }
   }
 
-  // Create a new pull request
   async createPullRequest({ owner, repo, title, head, base, body = '' }) {
+    /**
+     * Creates a new pull request in a GitHub repository.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.owner - Repository owner.
+     * @param {string} params.repo - Repository name.
+     * @param {string} params.title - Pull request title.
+     * @param {string} params.head - Branch to merge from.
+     * @param {string} params.base - Branch to merge into.
+     * @param {string} [params.body=''] - Pull request description.
+     * @returns {Promise<Object>} Result object with success status and pull request details.
+     */
     try {
       const { data } = await this.githubClient.rest.pulls.create({
         owner,
@@ -268,8 +375,18 @@ class ToolHandlers {
     }
   }
 
-  // Search code in repositories
   async searchCode({ q, sort = 'indexed', order = 'desc', per_page = 30 }) {
+    /**
+     * Searches for code in GitHub repositories.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.q - Search query.
+     * @param {string} [params.sort='indexed'] - Sort field.
+     * @param {string} [params.order='desc'] - Sort order.
+     * @param {number} [params.per_page=30] - Results per page.
+     * @returns {Promise<Object>} Result object with success status and search results.
+     */
     try {
       const { data } = await this.githubClient.rest.search.code({
         q,
@@ -298,8 +415,15 @@ class ToolHandlers {
     }
   }
 
-  // Get user details
   async getUser({ username }) {
+    /**
+     * Gets details of a GitHub user.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.username - GitHub username.
+     * @returns {Promise<Object>} Result object with success status and user details.
+     */
     try {
       const { data } = await this.githubClient.rest.users.getByUsername({
         username
@@ -328,8 +452,18 @@ class ToolHandlers {
     }
   }
 
-  // List commits in a repository
   async listCommits({ owner, repo, sha, per_page = 30 }) {
+    /**
+     * Lists commits in a GitHub repository.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.owner - Repository owner.
+     * @param {string} params.repo - Repository name.
+     * @param {string} params.sha - Branch or commit SHA.
+     * @param {number} [params.per_page=30] - Results per page.
+     * @returns {Promise<Object>} Result object with success status and commits list.
+     */
     try {
       const { data } = await this.githubClient.rest.repos.listCommits({
         owner,
@@ -356,8 +490,16 @@ class ToolHandlers {
     }
   }
 
-  /* Docker Tool Handlers */
   async handleDockerTools(toolName, parameters) {
+    /**
+     * Handles Docker tool execution by routing to specific handlers.
+     * 
+     * @async
+     * @param {string} toolName - The Docker tool name to execute.
+     * @param {Object} parameters - The parameters for the tool.
+     * @returns {Promise<any>} The result of the tool execution.
+     * @throws {Error} If Docker not configured or tool unknown.
+     */
     if (!this.dockerClient) {
       throw new Error('Docker not available. Make sure Docker is running.');
     }
@@ -384,8 +526,15 @@ class ToolHandlers {
     }
   }
 
-  // List containers
   async listContainers({ all = false }) {
+    /**
+     * Lists Docker containers.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {boolean} [params.all=false] - Include stopped containers.
+     * @returns {Promise<Object>} Result object with success status and containers list.
+     */
     try {
       const containers = await this.dockerClient.listContainers({ all });
       return {
@@ -405,8 +554,15 @@ class ToolHandlers {
     }
   }
 
-  // List images
   async listImages({ all = false }) {
+    /**
+     * Lists Docker images.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {boolean} [params.all=false] - Include dangling images.
+     * @returns {Promise<Object>} Result object with success status and images list.
+     */
     try {
       const images = await this.dockerClient.listImages({ all });
       return {
@@ -424,8 +580,15 @@ class ToolHandlers {
     }
   }
 
-  // Get container info
   async getContainerInfo({ container_id }) {
+    /**
+     * Gets detailed information about a Docker container.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.container_id - Container ID.
+     * @returns {Promise<Object>} Result object with success status and container info.
+     */
     try {
       const container = this.dockerClient.getContainer(container_id);
       const info = await container.inspect();
@@ -445,8 +608,15 @@ class ToolHandlers {
     }
   }
 
-  // Start a container
   async startContainer({ container_id }) {
+    /**
+     * Starts a Docker container.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.container_id - Container ID.
+     * @returns {Promise<Object>} Result object with success status and message.
+     */
     try {
       const container = this.dockerClient.getContainer(container_id);
       await container.start();
@@ -456,8 +626,15 @@ class ToolHandlers {
     }
   }
 
-  // Stop a container
   async stopContainer({ container_id }) {
+    /**
+     * Stops a Docker container.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.container_id - Container ID.
+     * @returns {Promise<Object>} Result object with success status and message.
+     */
     try {
       const container = this.dockerClient.getContainer(container_id);
       await container.stop();
@@ -467,8 +644,16 @@ class ToolHandlers {
     }
   }
 
-  // Remove a container
   async removeContainer({ container_id, force = false }) {
+    /**
+     * Removes a Docker container.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.container_id - Container ID.
+     * @param {boolean} [params.force=false] - Force removal.
+     * @returns {Promise<Object>} Result object with success status and message.
+     */
     try {
       const container = this.dockerClient.getContainer(container_id);
       await container.remove({ force });
@@ -478,8 +663,16 @@ class ToolHandlers {
     }
   }
 
-  // Get container logs
   async getContainerLogs({ container_id, tail = 100 }) {
+    /**
+     * Gets logs from a Docker container.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.container_id - Container ID.
+     * @param {number} [params.tail=100] - Number of lines to retrieve.
+     * @returns {Promise<Object>} Result object with success status and logs.
+     */
     try {
       const container = this.dockerClient.getContainer(container_id);
       const logs = await container.logs({
@@ -493,8 +686,15 @@ class ToolHandlers {
     }
   }
 
-  // Pull an image
   async pullImage({ image_name }) {
+    /**
+     * Pulls a Docker image from a registry.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.image_name - Image name to pull.
+     * @returns {Promise<Object>} Result object with success status and message.
+     */
     try {
       return new Promise((resolve, reject) => {
         this.dockerClient.pull(image_name, (err, stream) => {
@@ -517,8 +717,16 @@ class ToolHandlers {
     }
   }
 
-  /* File System Handlers */
   async handleFileSystemTools(toolName, parameters) {
+    /**
+     * Handles filesystem tool execution by routing to specific handlers.
+     * 
+     * @async
+     * @param {string} toolName - The filesystem tool name to execute.
+     * @param {Object} parameters - The parameters for the tool.
+     * @returns {Promise<any>} The result of the tool execution.
+     * @throws {Error} If tool unknown.
+     */
     switch (toolName) {
     case 'search_files':
       return await this.searchFiles(parameters);
@@ -537,8 +745,18 @@ class ToolHandlers {
     }
   }
 
-  // Search files in a directory
   async searchFiles({ directory, pattern, recursive = true, maxResults = 100 }) {
+    /**
+     * Searches for files in a directory by pattern.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.directory - Directory to search in.
+     * @param {string} params.pattern - File pattern to match.
+     * @param {boolean} [params.recursive=true] - Search recursively.
+     * @param {number} [params.maxResults=100] - Maximum results to return.
+     * @returns {Promise<Object>} Result object with success status and matched files.
+     */
     try {
       const { globSync } = require('glob');
       const expandedDir = this.expandPath(directory);
@@ -575,8 +793,15 @@ class ToolHandlers {
     }
   }
 
-  // Get file stats
   async getFileStats({ path: filePath }) {
+    /**
+     * Gets file or directory statistics.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.path - File or directory path.
+     * @returns {Promise<Object>} Result object with success status and file stats.
+     */
     try {
       const expandedPath = this.expandPath(filePath);
       const stats = await fs.stat(expandedPath);
@@ -596,8 +821,16 @@ class ToolHandlers {
     }
   }
 
-  // Create a directory
   async createDirectory({ path: dirPath, recursive = true }) {
+    /**
+     * Creates a new directory.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.path - Directory path to create.
+     * @param {boolean} [params.recursive=true] - Create parent directories if needed.
+     * @returns {Promise<Object>} Result object with success status and message.
+     */
     try {
       const expandedPath = this.expandPath(dirPath);
       await fs.mkdir(expandedPath, { recursive });
@@ -607,8 +840,15 @@ class ToolHandlers {
     }
   }
 
-  // Delete a file or directory
   async deleteFile({ path: filePath }) {
+    /**
+     * Deletes a file or directory.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.path - Path to file or directory to delete.
+     * @returns {Promise<Object>} Result object with success status and message.
+     */
     try {
       const expandedPath = this.expandPath(filePath);
       const stats = await fs.stat(expandedPath);
@@ -623,8 +863,16 @@ class ToolHandlers {
     }
   }
 
-  // Create a copy of a file
   async copyFile({ source, destination }) {
+    /**
+     * Creates a copy of a file.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.source - Source file path.
+     * @param {string} params.destination - Destination file path.
+     * @returns {Promise<Object>} Result object with success status and message.
+     */
     try {
       const expandedSource = this.expandPath(source);
       const expandedDest = this.expandPath(destination);
@@ -635,8 +883,16 @@ class ToolHandlers {
     }
   }
 
-  // Move a file
   async moveFile({ source, destination }) {
+    /**
+     * Moves a file to a new location.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.source - Source file path.
+     * @param {string} params.destination - Destination file path.
+     * @returns {Promise<Object>} Result object with success status and message.
+     */
     try {
       const expandedSource = this.expandPath(source);
       const expandedDest = this.expandPath(destination);
@@ -647,8 +903,16 @@ class ToolHandlers {
     }
   }
 
-  /* Notion Tool Handlers */
   async handleNotionTools(toolName, parameters) {
+    /**
+     * Handles Notion tool execution by routing to specific handlers.
+     * 
+     * @async
+     * @param {string} toolName - The Notion tool name to execute.
+     * @param {Object} parameters - The parameters for the tool.
+     * @returns {Promise<any>} The result of the tool execution.
+     * @throws {Error} If Notion not configured or tool unknown.
+     */
     if (!this.notionClient) {
       throw new Error('Notion not configured. Please set Notion token in settings.');
     }
@@ -669,8 +933,17 @@ class ToolHandlers {
     }
   }
 
-  // Query a Notion database
   async notionQueryDatabase({ database_id, filter, sorts }) {
+    /**
+     * Queries a Notion database.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.database_id - Database ID to query.
+     * @param {Object} params.filter - Query filter.
+     * @param {Array} params.sorts - Sort criteria.
+     * @returns {Promise<Object>} Result object with success status and results.
+     */
     try {
       const response = await this.notionClient.databases.query({
         database_id,
@@ -691,8 +964,17 @@ class ToolHandlers {
     }
   }
 
-  // Create a new page
   async notionCreatePage({ parent, properties, children }) {
+    /**
+     * Creates a new page in Notion.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {Object} params.parent - Parent database or page.
+     * @param {Object} params.properties - Page properties.
+     * @param {Array} params.children - Page content blocks.
+     * @returns {Promise<Object>} Result object with success status and page details.
+     */
     try {
       const response = await this.notionClient.pages.create({
         parent,
@@ -712,8 +994,15 @@ class ToolHandlers {
     }
   }
 
-  // Get a page by ID
   async notionGetPage({ page_id }) {
+    /**
+     * Gets a Notion page by ID.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.page_id - Page ID to retrieve.
+     * @returns {Promise<Object>} Result object with success status and page details.
+     */
     try {
       const response = await this.notionClient.pages.retrieve({ page_id });
       return {
@@ -730,8 +1019,16 @@ class ToolHandlers {
     }
   }
 
-  // Update a page
   async notionUpdatePage({ page_id, properties }) {
+    /**
+     * Updates a Notion page's properties.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.page_id - Page ID to update.
+     * @param {Object} params.properties - Updated properties.
+     * @returns {Promise<Object>} Result object with success status and page details.
+     */
     try {
       const response = await this.notionClient.pages.update({
         page_id,
@@ -750,8 +1047,16 @@ class ToolHandlers {
     }
   }
 
-  // Search for content
   async notionSearch({ query, filter }) {
+    /**
+     * Searches for content in Notion workspace.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.query - Search query.
+     * @param {Object} params.filter - Search filter criteria.
+     * @returns {Promise<Object>} Result object with success status and search results.
+     */
     try {
       const response = await this.notionClient.search({
         query,
@@ -770,8 +1075,16 @@ class ToolHandlers {
     }
   }
 
-  /* Slack Tool Handlers */
   async handleSlackTools(toolName, parameters) {
+    /**
+     * Handles Slack tool execution by routing to specific handlers.
+     * 
+     * @async
+     * @param {string} toolName - The Slack tool name to execute.
+     * @param {Object} parameters - The parameters for the tool.
+     * @returns {Promise<any>} The result of the tool execution.
+     * @throws {Error} If Slack not configured or tool unknown.
+     */
     if (!this.slackClient) {
       throw new Error('Slack not configured. Please set Slack token in settings.');
     }
@@ -792,8 +1105,17 @@ class ToolHandlers {
     }
   }
 
-  // Send a message to a channel
   async slackSendMessage({ channel, text, thread_ts }) {
+    /**
+     * Sends a message to a Slack channel.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.channel - Channel ID.
+     * @param {string} params.text - Message text.
+     * @param {string} params.thread_ts - Thread timestamp for replies.
+     * @returns {Promise<Object>} Result object with success status and message details.
+     */
     try {
       const response = await this.slackClient.chat.postMessage({
         channel,
@@ -812,8 +1134,15 @@ class ToolHandlers {
     }
   }
 
-  // List channels
   async slackListChannels({ types = 'public_channel,private_channel' }) {
+    /**
+     * Lists Slack channels.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} [params.types='public_channel,private_channel'] - Channel types to list.
+     * @returns {Promise<Object>} Result object with success status and channels list.
+     */
     try {
       const response = await this.slackClient.conversations.list({
         types
@@ -833,8 +1162,16 @@ class ToolHandlers {
     }
   }
 
-  // Get channel history
   async slackGetChannelHistory({ channel, limit = 100 }) {
+    /**
+     * Gets message history from a Slack channel.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.channel - Channel ID.
+     * @param {number} [params.limit=100] - Maximum messages to retrieve.
+     * @returns {Promise<Object>} Result object with success status and messages.
+     */
     try {
       const response = await this.slackClient.conversations.history({
         channel,
@@ -854,8 +1191,18 @@ class ToolHandlers {
     }
   }
 
-  // Upload a file to a channel
   async slackUploadFile({ channels, file, filename, title }) {
+    /**
+     * Uploads a file to Slack channels.
+     * 
+     * @async
+     * @param {Object} params - Parameters object.
+     * @param {string} params.channels - Comma-separated channel IDs.
+     * @param {Buffer} params.file - File data to upload.
+     * @param {string} params.filename - File name.
+     * @param {string} params.title - File title.
+     * @returns {Promise<Object>} Result object with success status and file details.
+     */
     try {
       const response = await this.slackClient.files.upload({
         channels,
@@ -876,8 +1223,13 @@ class ToolHandlers {
     }
   }
 
-  // List users
   async slackListUsers() {
+    /**
+     * Lists all users in the Slack workspace.
+     * 
+     * @async
+     * @returns {Promise<Object>} Result object with success status and users list.
+     */
     try {
       const response = await this.slackClient.users.list();
       return {
@@ -895,10 +1247,14 @@ class ToolHandlers {
     }
   }
 
-  /* Helpers below */
-
-  // Set GitHub token
   setGitHubToken(token) {
+    /**
+     * Sets the GitHub API token and reinitializes the client.
+     * 
+     * @param {string} token - The GitHub API token.
+     * @returns {void}
+     * @throws {Error} If token is invalid.
+     */
     if (typeof token !== 'string' || !token.trim()) {
       throw new Error('GitHub token must be a non-empty string.');
     }

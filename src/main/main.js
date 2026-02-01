@@ -1,6 +1,9 @@
-/*
- * Main process for Mai Buddy
- * Initializes the application and manages the main window, tray, and services.
+/**
+ * MaiBuddyApp
+ * Main application class for Mai Buddy AI assistant.
+ * Manages windows, services, and IPC communication.
+ * 
+ * Author: DJ Leamen, 2025-2026
  */
 
 const { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, screen, desktopCapturer } = require('electron');
@@ -11,8 +14,15 @@ const { VoiceService } = require('./services/voice-service');
 const { MCPManager } = require('./services/mcp-manager');
 const { HotkeyManager } = require('./services/hotkey-manager');
 
-// MaiBuddyApp class to encapsulate the main application logic
+/**
+ * MaiBuddyApp class to encapsulate the main application logic.
+ * Manages the entire application lifecycle, windows, services, and IPC communication.
+ */
 class MaiBuddyApp {
+  /**
+   * Creates a MaiBuddyApp instance.
+   * Initializes all services, window references, and application state.
+   */
   constructor() {
     this.store = new Store();
     this.mainWindow = null;
@@ -27,7 +37,13 @@ class MaiBuddyApp {
     this.isListening = false;
   }
 
-  // Initialize the application
+  /**
+   * Initializes the application.
+   * Creates windows, tray, services, shortcuts, and IPC handlers.
+   * 
+   * @async
+   * @returns {Promise<void>}
+   */
   async initialize() {
     await this.createMainWindow();
     await this.createTray();
@@ -36,7 +52,14 @@ class MaiBuddyApp {
     this.setupIpcHandlers();
   }
 
-  // Create the main chat window
+  /**
+   * Creates the main chat window.
+   * Configures window properties including transparency, always-on-top, and frameless design.
+   * Sets up event handlers for window blur and close events.
+   * 
+   * @async
+   * @returns {Promise<void>}
+   */
   async createMainWindow() {
     this.mainWindow = new BrowserWindow({
       width: 400,
@@ -71,7 +94,13 @@ class MaiBuddyApp {
     });
   }
 
-  // Create system tray icon and menu
+  /**
+   * Creates system tray icon and menu.
+   * Provides quick access to show window, settings, MCP connections, and quit.
+   * 
+   * @async
+   * @returns {Promise<void>}
+   */
   async createTray() {
     const iconPath = path.join(__dirname, '../../assets/tray-icon.png');
     const trayIcon = nativeImage.createFromPath(iconPath);
@@ -108,7 +137,14 @@ class MaiBuddyApp {
     });
   }
 
-  // Initialize all services
+  /**
+   * Initializes all services.
+   * Starts AI, voice, MCP, and hotkey services.
+   * Sets up trigger word detection for voice activation.
+   * 
+   * @async
+   * @returns {Promise<void>}
+   */
   async setupServices() {
     await this.aiService.initialize();
     await this.voiceService.initialize();
@@ -121,6 +157,13 @@ class MaiBuddyApp {
     });
   }
 
+  /**
+   * Registers global shortcuts and IPC event listeners.
+   * Sets up listeners for show-chat, voice-activation, quick-capture, toggle-listening, and hide-window.
+   * 
+   * @async
+   * @returns {Promise<void>}
+   */
   async registerGlobalShortcuts() {
     // Global shortcuts are now handled by HotkeyManager
     // Set up IPC event listeners for hotkey actions
@@ -151,7 +194,12 @@ class MaiBuddyApp {
     });
   }
 
-  // Setup IPC handlers for communication between renderer and main process
+  /**
+   * Sets up IPC handlers for communication between renderer and main process.
+   * Handles settings, messages, MCP management, voice services, and window management.
+   * 
+   * @returns {void}
+   */
   setupIpcHandlers() {
     // Settings handlers
     ipcMain.handle('get-settings', async () => {
@@ -379,7 +427,11 @@ class MaiBuddyApp {
     });
   }
 
-  // Show the main chat window
+  /**
+   * Shows the main chat window and brings it to focus.
+   * 
+   * @returns {void}
+   */
   showChatWindow() {
     if (this.mainWindow) {
       this.mainWindow.show();
@@ -389,14 +441,23 @@ class MaiBuddyApp {
     }
   }
 
-  // Hide the main chat window
+  /**
+   * Hides the main chat window.
+   * 
+   * @returns {void}
+   */
   hideChatWindow() {
     if (this.mainWindow) {
       this.mainWindow.hide();
     }
   }
 
-  // Toggle the visibility of the chat window
+  /**
+   * Toggles the visibility of the chat window.
+   * Shows the window if hidden, hides it if visible.
+   * 
+   * @returns {void}
+   */
   toggleChatWindow() {
     if (this.mainWindow) {
       if (this.mainWindow.isVisible()) {
@@ -407,13 +468,24 @@ class MaiBuddyApp {
     }
   }
 
-  // Activate voice mode by starting listening
+  /**
+   * Activates voice mode by starting listening.
+   * 
+   * @async
+   * @returns {Promise<void>}
+   */
   async activateVoiceMode() {
     await this.voiceService.startListening();
     this.isListening = true;
   }
 
-  // Toggle listening state
+  /**
+   * Toggles the listening state for voice input.
+   * Notifies the renderer process of state changes.
+   * 
+   * @async
+   * @returns {Promise<void>}
+   */
   async toggleListening() {
     try {
       if (this.isListening) {
@@ -436,7 +508,11 @@ class MaiBuddyApp {
     }
   }
 
-  // Show settings window
+  /**
+   * Shows the settings view in the main window.
+   * 
+   * @returns {void}
+   */
   showSettings() {
     if (this.mainWindow) {
       this.mainWindow.show();
@@ -444,7 +520,11 @@ class MaiBuddyApp {
     }
   }
 
-  // Show MCP manager window
+  /**
+   * Shows the MCP manager view in the main window.
+   * 
+   * @returns {void}
+   */
   showMCPManager() {
     if (this.mainWindow) {
       this.mainWindow.show();
@@ -452,7 +532,12 @@ class MaiBuddyApp {
     }
   }
 
-  // Create and show terminal output window
+  /**
+   * Creates and shows a terminal output window.
+   * Displays command execution output with syntax highlighting.
+   * 
+   * @returns {BrowserWindow} The created terminal window instance.
+   */
   createTerminalWindow() {
     if (this.terminalWindow) {
       this.terminalWindow.close();
@@ -536,7 +621,13 @@ class MaiBuddyApp {
     return this.terminalWindow;
   }
 
-  // Capture the screen and send for AI analysis
+  /**
+   * Captures the screen and sends it for AI analysis.
+   * Takes a screenshot of the primary display and sends it to the renderer for processing.
+   * 
+   * @async
+   * @returns {Promise<void>}
+   */
   async captureScreenAndAnalyze() {
     try {
       console.log('Starting screen capture...');

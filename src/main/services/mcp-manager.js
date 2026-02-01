@@ -1,6 +1,9 @@
-/*
- * Work in progress file to manage MCP connections and tools.
- * Only functioning MCP connections are GitHub and system integration as of August 2025
+/**
+ * MCP Manager Service
+ * Handles connections to various MCP (Modular Connection Protocol) services.
+ * Manages available connections, establishes and tests connections,
+ * 
+ * Author: DJ Leamen, 2025-2026
  */
 
 const Store = require('electron-store');
@@ -10,9 +13,16 @@ const axios = require('axios');
 const { MCPTools } = require('./mcp-tools');
 const { MCPServer } = require('./mcp-server');
 
-// MCPManager class to handle MCP connections and tools
+/**
+ * MCPManager class to handle MCP connections and tools.
+ * Manages connection lifecycle, tool execution, and MCP server operations.
+ */
 class MCPManager {
   constructor() {
+    /**
+     * Creates an MCPManager instance.
+     * Initializes storage, connections map, tools registry, and local server.
+     */
     this.store = new Store();
     this.connections = new Map();
     this.availableConnections = this.getAvailableMCPConnections();
@@ -21,8 +31,14 @@ class MCPManager {
     this.isLocalServerRunning = false;
   }
 
-  // Initialize MCPManager by starting local server and restoring connections
   async initialize() {
+    /**
+     * Initializes the MCPManager service.
+     * Starts the local MCP server, restores saved connections, and adds default local connections.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     await this.startLocalServer();
     
     const savedConnections = this.store.get('mcpConnections', []);
@@ -38,8 +54,12 @@ class MCPManager {
     await this.addDefaultLocalConnections();
   }
 
-  // Placeholders for MCP connections
   getAvailableMCPConnections() {
+    /**
+     * Returns a list of available MCP connection types.
+     * 
+     * @returns {Array} List of available MCP connections.
+     */
     return [
       // Development & Code
       {
@@ -394,8 +414,16 @@ class MCPManager {
     ];
   }
 
-  // Add a new connection and optionally save it
   async addConnection(connectionData, save = true) {
+    /**
+     * Adds a new MCP connection to the manager.
+     * 
+     * @async
+     * @param {Object} connectionData - The connection details including id, name, type, endpoint.
+     * @param {boolean} [save=true] - Whether to persist the connection to storage.
+     * @returns {Promise<Object>} The created connection object.
+     * @throws {Error} If connection establishment fails.
+     */
     const connection = {
       id: connectionData.id || uuidv4(),
       ...connectionData,
@@ -419,8 +447,15 @@ class MCPManager {
     }
   }
 
-  // Establish a connection based on its type
   async establishConnection(connection) {
+    /**
+     * Establishes a connection based on its type (api, websocket, database, or local).
+     * 
+     * @async
+     * @param {Object} connection - The connection object with type property.
+     * @returns {Promise<void>}
+     * @throws {Error} If connection type is unsupported.
+     */
     switch (connection.type) {
     case 'api':
       await this.connectToAPI(connection);
@@ -439,8 +474,16 @@ class MCPManager {
     }
   }
 
-  // Connect to an API endpoint
   async connectToAPI(connection) {
+    /**
+     * Connects to a RESTful API endpoint.
+     * Handles token and OAuth authentication.
+     * 
+     * @async
+     * @param {Object} connection - The connection object with endpoint and auth details.
+     * @returns {Promise<void>}
+     * @throws {Error} If API connection fails.
+     */
     try {
       const headers = {};
       
@@ -467,8 +510,16 @@ class MCPManager {
     }
   }
 
-  // Connect to a WebSocket endpoint
   async connectToWebSocket(connection) {
+    /**
+     * Connects to a WebSocket endpoint with automatic reconnection handling.
+     * Times out after 5 seconds if connection not established.
+     * 
+     * @async
+     * @param {Object} connection - The connection object with WebSocket endpoint.
+     * @returns {Promise<void>}
+     * @throws {Error} If WebSocket connection fails or times out.
+     */
     return new Promise((resolve, reject) => {
       try {
         const ws = new WebSocket(connection.endpoint);
@@ -504,8 +555,15 @@ class MCPManager {
     });
   }
 
-  // Connect to a database
   async connectToDatabase(connection) {
+    /**
+     * Connects to a database endpoint.
+     * Note: This is a placeholder implementation requiring specific database drivers.
+     * 
+     * @async
+     * @param {Object} connection - The connection object with database credentials.
+     * @returns {Promise<void>}
+     */
     // Database connections would require specific database drivers
     // This is a placeholder implementation
     connection.status = 'connected';
@@ -513,11 +571,25 @@ class MCPManager {
   }
 
   async connectToLocal(connection) {
+    /**
+     * Connects to a local endpoint (filesystem, terminal, etc.).
+     * 
+     * @async
+     * @param {Object} connection - The connection object with local endpoint.
+     * @returns {Promise<void>}
+     */
     connection.status = 'connected';
     connection.lastConnected = new Date().toISOString();
   }
 
   async removeConnection(connectionId) {
+    /**
+     * Removes a connection from the manager.
+     * 
+     * @async
+     * @param {string} connectionId - The ID of the connection to remove.
+     * @returns {Promise<boolean>} True if removed successfully, false if not found.
+     */
     const connection = this.connections.get(connectionId);
     
     if (connection) {
@@ -530,8 +602,14 @@ class MCPManager {
     return false;
   }
 
-  // Disconnect an active connection
   async disconnectConnection(connection) {
+    /**
+     * Disconnects an active connection and cleans up resources.
+     * 
+     * @async
+     * @param {Object} connection - The connection object to disconnect.
+     * @returns {Promise<void>}
+     */
     if (connection.client) {
       if (connection.type === 'websocket') {
         connection.client.close();
@@ -542,8 +620,15 @@ class MCPManager {
     connection.status = 'disconnected';
   }
 
-  // Test a connection by its ID
   async testConnection(connectionId) {
+    /**
+     * Tests the specified connection by attempting to establish it.
+     * 
+     * @async
+     * @param {string} connectionId - The ID of the connection to test.
+     * @returns {Promise<Object>} Result object with success status and message.
+     * @throws {Error} If connection not found.
+     */
     const connection = this.connections.get(connectionId);
     
     if (!connection) {
@@ -558,8 +643,12 @@ class MCPManager {
     }
   }
 
-  // Get all connections with their details
   getConnections() {
+    /**
+     * Returns a list of all MCP connections with their details.
+     * 
+     * @returns {Array} List of MCP connections.
+     */
     return Array.from(this.connections.values()).map(conn => ({
       id: conn.id,
       name: conn.name,
@@ -571,13 +660,22 @@ class MCPManager {
     }));
   }
 
-  // Get available connection types
   getAvailableConnectionTypes() {
+    /**
+     * Returns a list of available MCP connection types.
+     * 
+     * @returns {Array} List of available MCP connections.
+     */
     return this.availableConnections;
   }
 
-  // Save all connections to persistent storage
   saveConnections() {
+    /**
+     * Saves all connections to persistent storage.
+     * Strips out client objects and runtime-only properties.
+     * 
+     * @returns {void}
+     */
     const connectionsData = Array.from(this.connections.values()).map(conn => ({
       id: conn.id,
       name: conn.name,
@@ -595,8 +693,18 @@ class MCPManager {
     this.store.set('mcpConnections', connectionsData);
   }
 
-  // Send an MCP message over a connection
   async sendMCPMessage(connectionId, message, method = 'tools/call') {
+    /**
+     * Sends an MCP message over the specified connection.
+     * Supports WebSocket connections with JSON-RPC 2.0 protocol.
+     * 
+     * @async
+     * @param {string} connectionId - The ID of the connection to use.
+     * @param {Object} message - The message payload.
+     * @param {string} [method='tools/call'] - The MCP method to invoke.
+     * @returns {Promise<Object>} The response from the MCP service.
+     * @throws {Error} If connection not available or unsupported type.
+     */
     const connection = this.connections.get(connectionId);
     
     if (!connection || connection.status !== 'connected') {
@@ -636,8 +744,13 @@ class MCPManager {
     throw new Error('Unsupported connection type for MCP messaging');
   }
 
-  // Start the local MCP server
   async startLocalServer() {
+    /**
+     * Starts the local MCP server on port 3001.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     if (!this.isLocalServerRunning && !this.localServer) {
       try {
         this.localServer = new MCPServer(3001);
@@ -652,8 +765,13 @@ class MCPManager {
     }
   }
 
-  // Stop the local MCP server
   async stopLocalServer() {
+    /**
+     * Stops the local MCP server and cleans up resources.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     if (this.localServer && this.isLocalServerRunning) {
       this.localServer.stop();
       this.isLocalServerRunning = false;
@@ -662,8 +780,14 @@ class MCPManager {
     }
   }
 
-  // Add default local connections for file system and terminal
   async addDefaultLocalConnections() {
+    /**
+     * Adds default local connections for file system and terminal.
+     * Only adds connections that don't already exist.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     const defaultConnections = [
       {
         id: 'local-filesystem',
@@ -700,8 +824,18 @@ class MCPManager {
     }
   }
 
-  // Execute a tool over a specific connection
   async executeTool(connectionId, toolName, parameters) {
+    /**
+     * Executes a tool over a specific connection.
+     * Handles different connection types (local, api, websocket) appropriately.
+     * 
+     * @async
+     * @param {string} connectionId - The ID of the connection to use.
+     * @param {string} toolName - The name of the tool to execute.
+     * @param {Object} parameters - The parameters to pass to the tool.
+     * @returns {Promise<any>} The result of the tool execution.
+     * @throws {Error} If connection not available or tool execution unsupported.
+     */
     const connection = this.connections.get(connectionId);
     
     if (!connection || connection.status !== 'connected') {
@@ -733,8 +867,13 @@ class MCPManager {
 
   /* Configuration methods for GitHub */
 
-  // Set GitHub API token and update connection
   setGitHubToken(token) {
+    /**
+     * Sets the GitHub API token and updates the GitHub connection.
+     * 
+     * @param {string} token - The GitHub API token.
+     * @returns {void}
+     */
     this.tools.setGitHubToken(token);
     
     const githubConnection = Array.from(this.connections.values())
@@ -746,8 +885,15 @@ class MCPManager {
     }
   }
 
-  // Connect to GitHub with provided token
   async connectGitHub(token) {
+    /**
+     * Connects to GitHub with the provided token.
+     * Validates the token by authenticating with GitHub API.
+     * 
+     * @async
+     * @param {string} token - The GitHub API token.
+     * @returns {Promise<Object>} Result object with success status and message.
+     */
     try {
       this.setGitHubToken(token);
       
@@ -776,8 +922,12 @@ class MCPManager {
     }
   }
 
-  // Get connection status and info
   getConnectionInfo() {
+    /**
+     * Gets connection status and information for all connections.
+     * 
+     * @returns {Array<Object>} Array of connection information objects.
+     */
     const connections = [];
     
     for (const connection of this.connections.values()) {
@@ -797,16 +947,29 @@ class MCPManager {
     return connections;
   }
 
-  // Determine connection type from endpoint
   getConnectionTypeFromEndpoint(endpoint) {
+    /**
+     * Determines connection type from endpoint URL.
+     * 
+     * @param {string} endpoint - The endpoint URL.
+     * @returns {string} The connection type (filesystem, terminal, calendar, or default filesystem).
+     */
     if (endpoint.includes('filesystem')) return 'filesystem';
     if (endpoint.includes('terminal')) return 'terminal';
     if (endpoint.includes('calendar')) return 'calendar';
     return 'filesystem';
   }
 
-  // Get available tools for a specific connection
   async getAvailableTools(connectionId) {
+    /**
+     * Gets available tools for a specific connection.
+     * Queries the connection or local tools registry based on connection type.
+     * 
+     * @async
+     * @param {string} connectionId - The ID of the connection.
+     * @returns {Promise<Array>} Array of available tool definitions.
+     * @throws {Error} If connection not found.
+     */
     const connection = this.connections.get(connectionId);
     
     if (!connection) {
@@ -833,8 +996,16 @@ class MCPManager {
     return [];
   }
 
-  // Test connection with a ping message
   async testConnectionWithPing(connectionId) {
+    /**
+     * Tests connection with a ping message for WebSocket connections.
+     * Falls back to regular connection test for other types.
+     * 
+     * @async
+     * @param {string} connectionId - The ID of the connection to test.
+     * @returns {Promise<Object>} Result object with success status.
+     * @throws {Error} If connection not found.
+     */
     const connection = this.connections.get(connectionId);
     
     if (!connection) {
@@ -853,8 +1024,13 @@ class MCPManager {
     return await this.testConnection(connectionId);
   }
 
-  // Get statistics about current connections
   getConnectionStats() {
+    /**
+     * Gets statistics about current connections.
+     * Includes counts by status, type, and category.
+     * 
+     * @returns {Object} Statistics object with connection metrics.
+     */
     const stats = {
       total: this.connections.size,
       connected: 0,
@@ -876,8 +1052,13 @@ class MCPManager {
     return stats;
   }
 
-  // Reconnect all disconnected connections
   async reconnectAll() {
+    /**
+     * Reconnects all disconnected connections.
+     * 
+     * @async
+     * @returns {Promise<Array>} Array of results for each reconnection attempt.
+     */
     const results = [];
     
     for (const [connectionId, connection] of this.connections) {
@@ -894,8 +1075,14 @@ class MCPManager {
     return results;
   }
 
-  // Cleanup all connections and stop local server
   async cleanup() {
+    /**
+     * Cleans up all connections and stops the local server.
+     * Should be called on application shutdown.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     for (const connection of this.connections.values()) {
       await this.disconnectConnection(connection);
     }

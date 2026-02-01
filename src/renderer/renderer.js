@@ -6,6 +6,10 @@ const { ipcRenderer } = require('electron');
 
 class MaiBuddyRenderer {
   constructor() {
+    /**
+     * Creates a MaiBuddyRenderer instance.
+     * Initializes state, elements, event listeners, and loads initial data.
+     */
     this.isVoiceActive = false;
     this.currentSettings = {};
     this.mcpConnections = [];
@@ -23,6 +27,11 @@ class MaiBuddyRenderer {
   }
 
   initializeElements() {
+    /**
+     * Initializes and caches references to DOM elements.
+     * 
+     * @returns {void}
+     */
     // Title bar elements
     this.settingsBtn = document.getElementById('settingsBtn');
     this.minimizeBtn = document.getElementById('minimizeBtn');
@@ -48,6 +57,12 @@ class MaiBuddyRenderer {
   }
 
   setupEventListeners() {
+    /**
+     * Sets up all event listeners for UI interactions.
+     * Includes title bar, chat input, buttons, and IPC listeners.
+     * 
+     * @returns {void}
+     */
     // Title bar buttons
     this.settingsBtn.addEventListener('click', () => this.showSettings());
     this.minimizeBtn.addEventListener('click', () => this.hideWindow());
@@ -87,6 +102,12 @@ class MaiBuddyRenderer {
   }
   
   setupIPCListeners() {
+    /**
+     * Sets up IPC listeners for communication with main process.
+     * Handles events for showing settings and MCP manager.
+     * 
+     * @returns {void}
+     */
     // Listen for show-settings event from main process
     ipcRenderer.on('show-settings', () => {
       this.showSettings();
@@ -99,6 +120,12 @@ class MaiBuddyRenderer {
   }
 
   setupChatScrolling() {
+    /**
+     * Sets up chat scrolling behavior and keyboard shortcuts.
+     * Monitors scroll position and shows/hides scroll-to-bottom button.
+     * 
+     * @returns {void}
+     */
     if (!this.chatMessages || !this.scrollToBottomBtn) {
       return;
     }
@@ -138,6 +165,12 @@ class MaiBuddyRenderer {
   }
 
   handleChatScroll() {
+    /**
+     * Handles chat scroll events and updates scroll-to-bottom button visibility.
+     * Tracks whether user has scrolled up from the bottom.
+     * 
+     * @returns {void}
+     */
     if (!this.chatMessages || !this.scrollToBottomBtn) return;
     
     const { scrollTop, scrollHeight, clientHeight } = this.chatMessages;
@@ -153,14 +186,31 @@ class MaiBuddyRenderer {
   }
 
   scrollChat(delta) {
+    /**
+     * Scrolls the chat by a specified delta amount.
+     * 
+     * @param {number} delta - Amount to scroll (positive or negative).
+     * @returns {void}
+     */
     this.chatMessages.scrollTop += delta;
   }
 
   scrollToTop() {
+    /**
+     * Scrolls the chat to the top.
+     * 
+     * @returns {void}
+     */
     this.chatMessages.scrollTop = 0;
   }
 
   setupSettingsModal() {
+    /**
+     * Sets up event listeners for the settings modal.
+     * Handles close, save, cancel, tab switching, and slider updates.
+     * 
+     * @returns {void}
+     */
     const closeBtn = document.getElementById('closeSettingsBtn');
     const saveBtn = document.getElementById('saveSettingsBtn');
     const cancelBtn = document.getElementById('cancelSettingsBtn');
@@ -183,6 +233,12 @@ class MaiBuddyRenderer {
   }
 
   setupMCPModal() {
+    /**
+     * Sets up event listeners for the MCP manager modal.
+     * Handles close, add, and filter actions.
+     * 
+     * @returns {void}
+     */
     const closeBtn = document.getElementById('closeMcpBtn');
     const addBtn = document.getElementById('addMcpBtn');
     const categoryFilter = document.getElementById('mcpCategoryFilter');
@@ -193,6 +249,13 @@ class MaiBuddyRenderer {
   }
 
   async loadInitialData() {
+    /**
+     * Loads initial data including settings and MCP connections.
+     * Retries up to 3 times if IPC handlers are not ready.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     try {
       let attempts = 0;
       const maxAttempts = 3;
@@ -233,6 +296,11 @@ class MaiBuddyRenderer {
   }
 
   showWelcomeMessage() {
+    /**
+     * Displays the welcome message with quick action buttons.
+     * 
+     * @returns {void}
+     */
     const welcomeHtml = `
       <div class="welcome-message">
         <h2>👋 Welcome to Mai Buddy!</h2>
@@ -249,11 +317,24 @@ class MaiBuddyRenderer {
   }
 
   insertQuickMessage(message) {
+    /**
+     * Inserts a quick message into the input field and focuses it.
+     * 
+     * @param {string} message - The message to insert.
+     * @returns {void}
+     */
     this.messageInput.value = message;
     this.messageInput.focus();
   }
 
   async sendMessage() {
+    /**
+     * Sends a message to the AI service and displays the response.
+     * Shows typing indicator during processing.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     const message = this.messageInput.value.trim();
     if (!message) return;
     
@@ -289,6 +370,12 @@ class MaiBuddyRenderer {
   }
 
   addToolExecutionMessage(toolResult) {
+    /**
+     * Adds a tool execution result message to the chat.
+     * 
+     * @param {Object} toolResult - The result of the tool execution.
+     * @returns {void}
+     */
     const messageDiv = document.createElement('div');
     messageDiv.className = 'message system tool-execution';
     
@@ -316,6 +403,14 @@ class MaiBuddyRenderer {
   }
 
   addMessage(role, content, isError = false) {
+    /**
+     * Adds a message to the chat display.
+     * 
+     * @param {string} role - The role (user/assistant/system).
+     * @param {string} content - The message content.
+     * @param {boolean} [isError=false] - Whether this is an error message.
+     * @returns {void}
+     */
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}`;
     
@@ -346,6 +441,11 @@ class MaiBuddyRenderer {
   }
 
   showTypingIndicator() {
+    /**
+     * Shows the typing indicator animation in the chat.
+     * 
+     * @returns {void}
+     */
     const typingDiv = document.createElement('div');
     typingDiv.className = 'message assistant';
     typingDiv.id = 'typing-indicator';
@@ -360,6 +460,11 @@ class MaiBuddyRenderer {
   }
 
   hideTypingIndicator() {
+    /**
+     * Hides and removes the typing indicator from the chat.
+     * 
+     * @returns {void}
+     */
     const typingIndicator = document.getElementById('typing-indicator');
     if (typingIndicator) {
       typingIndicator.remove();
@@ -367,6 +472,12 @@ class MaiBuddyRenderer {
   }
 
   scrollToBottom() {
+    /**
+     * Scrolls the chat to the bottom smoothly.
+     * Resets user scroll state and updates scroll button visibility.
+     * 
+     * @returns {void}
+     */
     if (!this.chatMessages) return;
     
     this.chatMessages.scrollTo({
@@ -382,11 +493,22 @@ class MaiBuddyRenderer {
   }
 
   autoResizeTextarea() {
+    /**
+     * Automatically resizes the message input textarea based on content.
+     * Maximum height is 100px.
+     * 
+     * @returns {void}
+     */
     this.messageInput.style.height = 'auto';
     this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 100) + 'px';
   }
 
   toggleVoiceMode() {
+    /**
+     * Toggles voice mode on/off and updates UI accordingly.
+     * 
+     * @returns {void}
+     */
     this.isVoiceActive = !this.isVoiceActive;
     
     if (this.isVoiceActive) {
@@ -399,6 +521,11 @@ class MaiBuddyRenderer {
   }
 
   updateConnectionStatus() {
+    /**
+     * Updates the connection status indicator based on API key presence.
+     * 
+     * @returns {void}
+     */
     const hasApiKey = this.currentSettings.openaiApiKey && this.currentSettings.openaiApiKey.length > 0;
     
     if (hasApiKey) {
@@ -411,15 +538,31 @@ class MaiBuddyRenderer {
   }
 
   updateMCPCount() {
+    /**
+     * Updates the MCP connection count badge.
+     * 
+     * @returns {void}
+     */
     const activeConnections = this.mcpConnections.filter(conn => conn.status === 'connected').length;
     this.mcpCount.textContent = activeConnections;
   }
 
   hideSettings() {
+    /**
+     * Hides the settings modal.
+     * 
+     * @returns {void}
+     */
     this.settingsModal.classList.add('hidden');
   }
 
   loadSettingsIntoForm() {
+    /**
+     * Loads current settings into the settings form.
+     * Populates all input fields, checkboxes, and sliders.
+     * 
+     * @returns {void}
+     */
     // Load current settings into form
     document.getElementById('openaiApiKey').value = this.currentSettings.openaiApiKey || '';
     document.getElementById('elevenLabsApiKey').value = this.currentSettings.elevenLabsApiKey || '';
@@ -438,6 +581,13 @@ class MaiBuddyRenderer {
   }
 
   async saveSettings() {
+    /**
+     * Saves settings from the form to storage via IPC.
+     * Updates connection status and closes the modal on success.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     const settings = {
       openaiApiKey: document.getElementById('openaiApiKey').value,
       elevenLabsApiKey: document.getElementById('elevenLabsApiKey').value,
@@ -465,6 +615,12 @@ class MaiBuddyRenderer {
   }
 
   switchTab(tabName) {
+    /**
+     * Switches the active tab in the settings modal.
+     * 
+     * @param {string} tabName - The name of the tab to switch to.
+     * @returns {void}
+     */
     // Remove active class from all tabs and content
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
@@ -475,20 +631,41 @@ class MaiBuddyRenderer {
   }
 
   showSettings() {
+    /**
+     * Shows the settings modal and loads current settings.
+     * 
+     * @returns {void}
+     */
     this.loadSettingsIntoForm();
     this.settingsModal.classList.remove('hidden');
   }
 
   showMCPManager() {
+    /**
+     * Shows the MCP manager modal and loads connections.
+     * 
+     * @returns {void}
+     */
     this.loadMCPConnections();
     this.mcpModal.classList.remove('hidden');
   }
 
   hideMCPManager() {
+    /**
+     * Hides the MCP manager modal.
+     * 
+     * @returns {void}
+     */
     this.mcpModal.classList.add('hidden');
   }
 
   async loadMCPConnections() {
+    /**
+     * Loads MCP connections from the main process and renders them.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     try {
       const result = await ipcRenderer.invoke('mcp-get-connections');
       if (result.success) {
@@ -505,6 +682,11 @@ class MaiBuddyRenderer {
   }
 
   updateMCPStatus() {
+    /**
+     * Updates the MCP status indicator and count badge.
+     * 
+     * @returns {void}
+     */
     if (this.mcpStats) {
       this.mcpCount.textContent = this.mcpStats.connected;
       
@@ -520,6 +702,12 @@ class MaiBuddyRenderer {
   }
 
   renderMCPConnections() {
+    /**
+     * Renders MCP connections grouped by category.
+     * Shows empty state if no connections exist.
+     * 
+     * @returns {void}
+     */
     const container = document.getElementById('mcpConnectionsList');
     
     if (!container) {
@@ -603,6 +791,13 @@ class MaiBuddyRenderer {
   }
 
   async showAddMCPConnection() {
+    /**
+     * Shows a modal dialog for adding a new MCP connection.
+     * Creates and displays a form with connection configuration options.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.innerHTML = `
@@ -674,6 +869,13 @@ class MaiBuddyRenderer {
   }
 
   async addMCPConnection() {
+    /**
+     * Adds a new MCP connection from the form data.
+     * Validates required fields and sends request to main process.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     const form = document.getElementById('addMcpForm');
     const formData = new FormData(form);
     
@@ -711,6 +913,15 @@ class MaiBuddyRenderer {
   }
 
   async testMCPConnection(connectionId, buttonElement) {
+    /**
+     * Tests an MCP connection and shows result notification.
+     * Updates button state during testing.
+     * 
+     * @async
+     * @param {string} connectionId - The ID of the connection to test.
+     * @param {HTMLElement} buttonElement - The button element that triggered the test.
+     * @returns {Promise<void>}
+     */
     try {
       const button = buttonElement || document.querySelector(`[onclick*="${connectionId}"]`);
       button.dataset.originalText = button.innerHTML;
@@ -738,6 +949,13 @@ class MaiBuddyRenderer {
   }
 
   async showMCPTools(connectionId) {
+    /**
+     * Shows available tools for an MCP connection in a modal dialog.
+     * 
+     * @async
+     * @param {string} connectionId - The ID of the connection.
+     * @returns {Promise<void>}
+     */
     try {
       const result = await ipcRenderer.invoke('mcp-get-tools', connectionId);
       
@@ -795,6 +1013,15 @@ class MaiBuddyRenderer {
   }
 
   async executeMCPTool(connectionId, toolName) {
+    /**
+     * Executes an MCP tool with provided parameters.
+     * Prompts user for parameters for common tools.
+     * 
+     * @async
+     * @param {string} connectionId - The ID of the connection.
+     * @param {string} toolName - The name of the tool to execute.
+     * @returns {Promise<void>}
+     */
     // Simple tool execution - in a real implementation, you'd want a form for parameters
     const parameters = {};
     
@@ -841,6 +1068,13 @@ class MaiBuddyRenderer {
   }
 
   async removeMCPConnection(connectionId) {
+    /**
+     * Removes an MCP connection after user confirmation.
+     * 
+     * @async
+     * @param {string} connectionId - The ID of the connection to remove.
+     * @returns {Promise<void>}
+     */
     if (!confirm('Are you sure you want to remove this MCP connection?')) {
       return;
     }
@@ -862,6 +1096,14 @@ class MaiBuddyRenderer {
   }
 
   showNotification(message, type = 'info') {
+    /**
+     * Shows a temporary notification message.
+     * Auto-removes after 3 seconds.
+     * 
+     * @param {string} message - The notification message.
+     * @param {string} [type='info'] - The notification type (info/error/success).
+     * @returns {void}
+     */
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
     notification.textContent = message;
@@ -877,26 +1119,54 @@ class MaiBuddyRenderer {
   // MCP methods consolidated
 
   showAddMCPDialog() {
+    /**
+     * Shows dialog for adding MCP connections.
+     * Placeholder for future implementation.
+     * 
+     * @returns {void}
+     */
     // This would open a dialog to add new MCP connections
     alert('Add MCP Connection feature coming soon!');
   }
 
   editMCPConnection() {
+    /**
+     * Shows dialog for editing MCP connections.
+     * Placeholder for future implementation.
+     * 
+     * @returns {void}
+     */
     // This would open a dialog to edit MCP connections
     alert('Edit MCP Connection feature coming soon!');
   }
 
   filterMCPConnections() {
+    /**
+     * Filters displayed MCP connections by selected criteria.
+     * Placeholder for future implementation.
+     * 
+     * @returns {void}
+     */
     // This would filter the displayed connections
     console.log('Filtering MCP connections...');
   }
 
   hideWindow() {
+    /**
+     * Hides the application window via IPC to main process.
+     * 
+     * @returns {void}
+     */
     // This would be handled by the main process
     ipcRenderer.invoke('hide-window');
   }
 
   quitApp() {
+    /**
+     * Quits the application via IPC to main process.
+     * 
+     * @returns {void}
+     */
     ipcRenderer.invoke('quit-app');
   }
 }

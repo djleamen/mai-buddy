@@ -1,15 +1,23 @@
-/*
- * HotkeyManager is responsible for managing global hotkeys in the application.
- * It allows registering, unregistering, and handling hotkey actions.
- * Feel free to customize hotkeys and their actions as needed.
+/**
+ * Hotkey Manager Service
+ * Manages global hotkeys for the application using Electron's globalShortcut module.
+ * 
+ * Author: DJ Leamen, 2025-2026
  */
 
 const { globalShortcut } = require('electron');
 const Store = require('electron-store');
 
-// HotkeyManager class to manage global hotkeys
+/**
+ * HotkeyManager class to manage global hotkeys using Electron's globalShortcut module.
+ * Provides registration, validation, and management of keyboard shortcuts.
+ */
 class HotkeyManager {
   constructor() {
+    /**
+     * Creates a HotkeyManager instance.
+     * Initializes storage and default hotkey mappings.
+     */
     this.store = new Store();
     this.registeredHotkeys = new Map();
     this.defaultHotkeys = {
@@ -21,8 +29,13 @@ class HotkeyManager {
     };
   }
 
-  // Initialize and register hotkeys from store or defaults
   async initialize() {
+    /**
+     * Initializes and registers hotkeys from storage or defaults.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     const customHotkeys = this.store.get('customHotkeys', {});
     const hotkeys = { ...this.defaultHotkeys, ...customHotkeys };
 
@@ -31,8 +44,15 @@ class HotkeyManager {
     }
   }
 
-  // Register a global hotkey with optional callback
   async registerHotkey(action, shortcut, callback = null) {
+    /**
+     * Registers a global hotkey.
+     * 
+     * @param {string} action - The action identifier for the hotkey.
+     * @param {string} shortcut - The shortcut string (e.g., 'CommandOrControl+Shift+M').
+     * @param {function|null} callback - Optional callback to execute on hotkey press.
+     * @returns {boolean} True if registration was successful, else false.
+     */
     try {
       if (this.registeredHotkeys.has(action)) {
         const existingShortcut = this.registeredHotkeys.get(action);
@@ -61,8 +81,13 @@ class HotkeyManager {
     }
   }
 
-  // Unregister a global hotkey
   unregisterHotkey(action) {
+    /**
+     * Unregisters a global hotkey.
+     * 
+     * @param {string} action - The action identifier for the hotkey.
+     * @returns {boolean} True if unregistration was successful, else false.
+     */
     if (this.registeredHotkeys.has(action)) {
       const shortcut = this.registeredHotkeys.get(action);
       globalShortcut.unregister(shortcut);
@@ -73,8 +98,12 @@ class HotkeyManager {
     return false;
   }
 
-  // Handle hotkey action by emitting corresponding IPC events
   handleHotkeyAction(action) {
+    /**
+     * Handles the action associated with a hotkey.
+     * 
+     * @param {string} action - The action identifier for the hotkey.
+     */
     const { ipcMain } = require('electron');
     
     switch (action) {
@@ -99,17 +128,33 @@ class HotkeyManager {
   }
 
   getRegisteredHotkeys() {
+    /**
+     * Returns the currently registered hotkeys.
+     * 
+     * @returns {object} An object mapping actions to their shortcuts.
+     */
     return Object.fromEntries(this.registeredHotkeys);
   }
 
   saveCustomHotkey(action, shortcut) {
+    /**
+     * Saves a custom hotkey to the store.
+     * 
+     * @param {string} action - The action identifier for the hotkey.
+     * @param {string} shortcut - The shortcut string (e.g., 'CommandOrControl+Shift+M').
+     */
     const customHotkeys = this.store.get('customHotkeys', {});
     customHotkeys[action] = shortcut;
     this.store.set('customHotkeys', customHotkeys);
   }
 
-  // Reset all hotkeys to their default values
   resetToDefaults() {
+    /**
+     * Resets all hotkeys to their default values.
+     * Unregisters custom hotkeys and re-registers defaults.
+     * 
+     * @returns {void}
+     */
     for (const [action] of this.registeredHotkeys) {
       this.unregisterHotkey(action);
     }
@@ -121,8 +166,13 @@ class HotkeyManager {
     }
   }
 
-  // Validate if a shortcut string is in correct format
   isValidShortcut(shortcut) {
+    /**
+     * Validates the format of a shortcut string.
+     * 
+     * @param {string} shortcut - The shortcut string to validate.
+     * @returns {boolean} True if valid, else false.
+     */
     // Basic validation for Electron accelerator format
     const validModifiers = ['CommandOrControl', 'Alt', 'Option', 'AltGr', 'Shift', 'Super', 'Meta'];
     
@@ -145,6 +195,12 @@ class HotkeyManager {
   }
 
   _isValidKey(key) {
+    /**
+     * Checks if a key is valid for use in a shortcut.
+     * 
+     * @param {string} key - The key to validate.
+     * @returns {boolean} True if valid, else false.
+     */
     // Check for alphanumeric characters
     if (/^[A-Za-z\d]$/.test(key)) {
       return true;
@@ -166,8 +222,12 @@ class HotkeyManager {
     return specialKeys.includes(key);
   }
 
-  // Get list of available modifier keys for shortcuts
   getAvailableModifiers() {
+    /**
+     * Gets list of available keyboard modifiers.
+     * 
+     * @returns {Array<string>} Array of available modifier key names.
+     */
     return [
       'CommandOrControl',
       'Alt',
@@ -176,8 +236,12 @@ class HotkeyManager {
     ];
   }
 
-  // Get list of available keys for shortcuts
   getAvailableKeys() {
+    /**
+     * Gets list of available keys for hotkey combinations.
+     * 
+     * @returns {Array<string>} Array of available key names.
+     */
     return [
       // Letters
       ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''),
@@ -193,8 +257,13 @@ class HotkeyManager {
     ];
   }
 
-  // Cleanup all registered hotkeys
   cleanup() {
+    /**
+     * Cleans up all registered hotkeys.
+     * Should be called on application shutdown.
+     * 
+     * @returns {void}
+     */
     for (const [action] of this.registeredHotkeys) {
       this.unregisterHotkey(action);
     }

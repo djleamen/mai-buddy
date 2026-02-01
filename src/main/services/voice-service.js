@@ -1,5 +1,9 @@
-/*
- * Voice Service for handling text-to-speech and speech recognition
+/**
+ * VoiceService
+ * Manages text-to-speech and speech recognition functionalities.
+ * Integrates with ElevenLabs API for TTS and Web Speech API for recognition.
+ * 
+ * Author: DJ Leamen, 2025-2026
  */
 
 const { ElevenLabsClient } = require('elevenlabs');
@@ -8,9 +12,16 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
-// VoiceService class to manage TTS and speech recognition
+/**
+ * VoiceService class to manage text-to-speech and speech recognition.
+ * Integrates with ElevenLabs for TTS and Web Speech API for recognition.
+ */
 class VoiceService {
   constructor() {
+    /**
+     * Creates a VoiceService instance.
+     * Initializes storage, ElevenLabs client, and recognition settings.
+     */
     this.store = new Store();
     this.elevenLabs = null;
     this.isListening = false;
@@ -20,8 +31,14 @@ class VoiceService {
     this.speechRecognition = null;
   }
 
-  // Initialize the VoiceService
   async initialize() {
+    /**
+     * Initializes the VoiceService.
+     * Sets up ElevenLabs client and speech recognition if configured.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     const settings = this.store.get('settings', {});
     
     if (settings.elevenLabsApiKey) {
@@ -33,8 +50,13 @@ class VoiceService {
     await this.setupSpeechRecognition();
   }
 
-  // Setup speech recognition using Web Speech API
   async setupSpeechRecognition() {
+    /**
+     * Sets up speech recognition using Web Speech API.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     try {
       // Check if running in browser environment
       if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
@@ -61,8 +83,22 @@ class VoiceService {
     }
   }
 
-  // Convert text to speech using ElevenLabs API
   async textToSpeech(text, options = {}) {
+    /**
+     * Converts text to speech using ElevenLabs API.
+     * 
+     * @async
+     * @param {string} text - The text to convert to speech.
+     * @param {Object} [options={}] - Voice synthesis options.
+     * @param {string} [options.voice='Rachel'] - Voice ID to use.
+     * @param {string} [options.model='eleven_monolingual_v1'] - Model ID to use.
+     * @param {number} [options.stability=0.5] - Voice stability (0-1).
+     * @param {number} [options.similarityBoost=0.5] - Similarity boost (0-1).
+     * @param {number} [options.style=0.0] - Speaking style (0-1).
+     * @param {boolean} [options.useSpeakerBoost=true] - Use speaker boost.
+     * @returns {Promise<string>} Path to the generated audio file.
+     * @throws {Error} If ElevenLabs not configured or generation fails.
+     */
     if (!this.elevenLabs) {
       throw new Error('ElevenLabs API key not configured. Please set it in settings.');
     }
@@ -107,8 +143,14 @@ class VoiceService {
     }
   }
 
-  // Play audio file using system default player
   async playAudio(audioPath) {
+    /**
+     * Plays an audio file using the system default player.
+     * 
+     * @async
+     * @param {string} audioPath - Path to the audio file.
+     * @returns {Promise<void>}
+     */
     return new Promise((resolve, reject) => {
       let player;
       
@@ -135,8 +177,13 @@ class VoiceService {
     });
   }
 
-  // Start listening for voice input
   async startListening() {
+    /**
+     * Starts listening for voice input.
+     * 
+     * @async
+     * @returns {Promise<void>}
+     */
     if (this.speechRecognition && !this.isListening) {
       try {
         this.isListening = true;
@@ -149,8 +196,12 @@ class VoiceService {
     }
   }
 
-  // Stop listening for voice input
   stopListening() {
+    /**
+     * Stops listening for voice input.
+     * 
+     * @returns {void}
+     */
     if (this.speechRecognition && this.isListening) {
       this.speechRecognition.stop();
       this.isListening = false;
@@ -158,13 +209,24 @@ class VoiceService {
     }
   }
 
-  // Register a trigger word with a callback
   onTriggerWord(phrase, callback) {
+    /**
+     * Registers a trigger word with a callback.
+     * 
+     * @param {string} phrase - The trigger phrase to listen for.
+     * @param {Function} callback - The callback to execute when phrase is detected.
+     * @returns {void}
+     */
     this.triggerWords.set(phrase.toLowerCase(), callback);
   }
 
-  // Process recognized transcript for trigger words
   processTranscript(transcript) {
+    /**
+     * Processes recognized transcript for trigger words.
+     * 
+     * @param {string} transcript - The recognized transcript text.
+     * @returns {void}
+     */
     console.log('Transcript:', transcript);
     
     // Check for trigger words
@@ -177,8 +239,14 @@ class VoiceService {
     }
   }
 
-  // Get available voices from ElevenLabs
   async getAvailableVoices() {
+    /**
+     * Gets available voices from ElevenLabs.
+     * 
+     * @async
+     * @returns {Promise<Array>} Array of available voice objects.
+     * @throws {Error} If ElevenLabs not configured.
+     */
     if (!this.elevenLabs) {
       return [];
     }
@@ -198,20 +266,35 @@ class VoiceService {
     }
   }
 
-  // Ensure a directory exists, create if it doesn't
   async ensureDirectoryExists(dirPath) {
+    /**
+     * Ensures a directory exists, creates it if it doesn't.
+     * 
+     * @async
+     * @param {string} dirPath - Directory path to ensure exists.
+     * @returns {Promise<void>}
+     */
     if (!fs.existsSync(dirPath)) {
       fs.mkdirSync(dirPath, { recursive: true });
     }
   }
 
-  // Set voice settings in store
   setVoiceSettings(settings) {
+    /**
+     * Sets voice settings in storage.
+     * 
+     * @param {Object} settings - Voice settings object.
+     * @returns {void}
+     */
     this.store.set('voiceSettings', settings);
   }
 
-  // Get voice settings from store
   getVoiceSettings() {
+    /**
+     * Gets voice settings from storage.
+     * 
+     * @returns {Object} Voice settings object with defaults.
+     */
     return this.store.get('voiceSettings', {
       voice: 'Rachel',
       model: 'eleven_monolingual_v1',

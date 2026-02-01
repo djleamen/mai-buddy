@@ -1,6 +1,8 @@
-/*
- * MCP Tools Registry
- * Defines available tools for different MCP connections
+/**
+ * MCP Tools
+ * Manages tool registrations and executions for MCP connections.
+ * 
+ * Author: DJ Leamen, 2025-2026
  */
 
 const fs = require('fs').promises;
@@ -12,7 +14,12 @@ const os = require('os');
 
 const execAsync = promisify(exec);
 
-// Helper function to expand ~ in paths
+/**
+ * Expands tilde (~) in file paths to the user's home directory.
+ * 
+ * @param {string} filePath - The file path to expand.
+ * @returns {string} The expanded file path.
+ */
 function expandPath(filePath) {
   if (filePath.startsWith('~/')) {
     return path.join(os.homedir(), filePath.slice(2));
@@ -23,9 +30,16 @@ function expandPath(filePath) {
   return filePath;
 }
 
-// MCPTools class to manage tool registrations and executions
+/**
+ * MCPTools class to manage tool registrations and executions.
+ * Provides tools for filesystem, terminal, GitHub, Docker, Notion, Slack, and more.
+ */
 class MCPTools {
   constructor() {
+    /**
+     * Creates an MCPTools instance.
+     * Initializes the tools registry and registers default tools.
+     */
     this.tools = new Map();
     try {
       this.toolHandlers = new ToolHandlers();
@@ -35,8 +49,13 @@ class MCPTools {
     this.registerDefaultTools();
   }
 
-  // Register default tools for various connection types
   registerDefaultTools() {
+    /**
+     * Registers default tools for various connection types.
+     * Includes filesystem, terminal, GitHub, Docker, Notion, Slack, and calendar tools.
+     * 
+     * @returns {void}
+     */
     /* File System Tools */
     this.registerTool('filesystem', 'read_file', {
       description: 'Read content from a file',
@@ -706,21 +725,37 @@ class MCPTools {
     });
   }
 
-  // Register a tool for a specific connection type
   registerTool(connectionType, toolName, toolDefinition) {
+    /**
+     * Registers a tool for a specific connection type.
+     * 
+     * @param {string} connectionType - The connection type (e.g., 'filesystem', 'github').
+     * @param {string} toolName - The tool name.
+     * @param {Object} toolDefinition - The tool definition including handler and parameters.
+     * @returns {void}
+     */
     if (!this.tools.has(connectionType)) {
       this.tools.set(connectionType, new Map());
     }
     this.tools.get(connectionType).set(toolName, toolDefinition);
   }
 
-  // Get tools available for a specific connection type
   getToolsForConnection(connectionType) {
+    /**
+     * Gets tools available for a specific connection type.
+     * 
+     * @param {string} connectionType - The connection type.
+     * @returns {Map} Map of tool names to tool definitions.
+     */
     return this.tools.get(connectionType) || new Map();
   }
 
-  // Get all registered tools
   getAllTools() {
+    /**
+     * Gets all registered tools across all connection types.
+     * 
+     * @returns {Object} Object mapping connection types to their tools.
+     */
     const allTools = {};
     for (const [connectionType, tools] of this.tools) {
       allTools[connectionType] = Object.fromEntries(tools);
@@ -728,8 +763,17 @@ class MCPTools {
     return allTools;
   }
 
-  // Execute a tool with given parameters
   async executeTool(connectionType, toolName, parameters) {
+    /**
+     * Executes a tool with given parameters.
+     * 
+     * @async
+     * @param {string} connectionType - The connection type.
+     * @param {string} toolName - The tool name.
+     * @param {Object} parameters - The parameters to pass to the tool.
+     * @returns {Promise<any>} The result of the tool execution.
+     * @throws {Error} If tool not found or execution fails.
+     */
     const tools = this.getToolsForConnection(connectionType);
     const tool = tools.get(toolName);
     
@@ -744,8 +788,14 @@ class MCPTools {
     }
   }
 
-  // Get tool definition for a specific connection type and tool name
   getToolDefinition(connectionType, toolName) {
+    /**
+     * Gets tool definition for a specific connection type and tool name.
+     * 
+     * @param {string} connectionType - The connection type.
+     * @param {string} toolName - The tool name.
+     * @returns {Object|null} The tool definition or null if not found.
+     */
     const tools = this.getToolsForConnection(connectionType);
     const tool = tools.get(toolName);
     
@@ -760,20 +810,35 @@ class MCPTools {
     };
   }
 
-  // Get list of tool definitions for a connection type
   getToolsListForConnection(connectionType) {
+    /**
+     * Gets list of tool definitions for a connection type.
+     * 
+     * @param {string} connectionType - The connection type.
+     * @returns {Array<Object>} Array of tool definition objects.
+     */
     const tools = this.getToolsForConnection(connectionType);
     return Array.from(tools.keys()).map(toolName => 
       this.getToolDefinition(connectionType, toolName)
     );
   }
 
-  // Configuration methods for GitHub
   setGitHubToken(token) {
+    /**
+     * Sets the GitHub API token in tool handlers.
+     * 
+     * @param {string} token - The GitHub API token.
+     * @returns {any} Result from tool handlers.
+     */
     return this.toolHandlers.setGitHubToken(token);
   }
 
   getToolHandlers() {
+    /**
+     * Gets the tool handlers instance.
+     * 
+     * @returns {ToolHandlers} The tool handlers instance.
+     */
     return this.toolHandlers;
   }
 }
