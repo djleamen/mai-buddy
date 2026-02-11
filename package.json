@@ -41,7 +41,7 @@
     "@notionhq/client": "^5.6.0",
     "@octokit/rest": "^20.1.2",
     "@slack/web-api": "^7.13.0",
-    "axios": "^1.12.0",
+    "axios": "^1.13.5",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "dockerode": "^4.0.9",
