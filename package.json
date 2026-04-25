@@ -41,10 +41,10 @@
     "@notionhq/client": "^5.6.0",
     "@octokit/rest": "^20.1.2",
     "@slack/web-api": "^7.13.0",
-    "axios": "^1.15.1",
+    "axios": "^1.15.2",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
-    "dockerode": "^4.0.9",
+    "dockerode": "^5.0.0",
     "dotenv": "^16.3.1",
     "electron-store": "^8.1.0",
     "elevenlabs": "^1.59.0",
@@ -59,7 +59,7 @@
     "socket.io": "^4.7.4",
     "socket.io-client": "^4.7.4",
     "speech-recognition": "^0.0.1",
-    "uuid": "^9.0.1",
+    "uuid": "^14.0.0",
     "ws": "^8.16.0"
   },
   "build": {
