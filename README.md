@@ -1,194 +1,84 @@
-# Mai Buddy Desktop AI Agent
+# Mai Buddy
 
-Mai Buddy is a highly customizable, personal AI agent that runs as a desktop application. It features GPT integration, ElevenLabs voice synthesis, and dozens of MCP (Model Context Protocol) connections for extending functionality.
+A customizable, personal desktop AI agent powered by **Anthropic Claude**, built on **pywebview**. Runs in your menu bar, ships with built-in MCP-style tools (filesystem, shell, GitHub), and is summoned with a global hotkey.
 
 ## Features
 
-### 🤖 AI Integration
-- **GPT-4 Support**: Powered by OpenAI's latest models
-- **Customizable System Prompts**: Tailor the AI's personality and behavior
-- **Conversation Memory**: Maintains context across sessions
-- **Multiple Model Support**: Choose from GPT-4, GPT-4 Turbo, and GPT-3.5 Turbo
+- **Anthropic Claude** chat (default `claude-sonnet-4-5`, configurable in settings)
+- **Persistent conversation history** stored locally in your application support directory
+- **System tray / menu-bar icon** for show / hide / quit
+- **Global hotkey** (`Cmd+Shift+M`) to toggle the window
+- **Frameless, transparent, always-on-top** window with a draggable title bar
+- **Built-in MCP tools** the AI can call autonomously:
+  - `filesystem`: `read_file`, `write_file`, `list_directory` (writes restricted to your home directory)
+  - `system`: `execute_command` (shell)
+  - `github`: list repos, get repo, list issues, search code
+- **Markdown-rendered responses** in the chat (sanitized via DOMPurify)
+- **Secure secret storage** via the macOS keychain (`keyring`)
 
-### 🎤 Voice Capabilities
-- **ElevenLabs Integration**: High-quality text-to-speech
-- **Voice Activation**: Respond to "Mai Buddy" trigger phrase
-- **Multiple Voice Options**: Choose from various AI voices
-- **Real-time Speech Recognition**: Voice input support
+## Requirements
 
-### 🔌 MCP Connections (30+ Integrations)
-- **Development**: GitHub ✨, GitLab, VS Code, Docker
-- **Communication**: Slack, Discord, Microsoft Teams
-- **Productivity**: Notion, Trello, Asana
-- **Cloud Services**: AWS, Google Cloud, Azure, DigitalOcean
-- **Databases**: PostgreSQL, MySQL, MongoDB, Redis
-- **AI/ML**: Hugging Face, Anthropic, Replicate
-- **Finance**: Stripe, Plaid, Salesforce
-- **Media**: YouTube, Spotify, Unsplash
-- **System**: File System, Terminal, Calendar
-- **Custom**: Build your own MCP servers
+- macOS (primary target — pywebview/WKWebView. Linux/Windows should work but are untested in this iteration.)
+- Python **3.10+**
+- An Anthropic API key
 
-### 🎨 User Experience
-- **Always Available**: Runs in system tray
-- **Global Hotkeys**: Quick access with keyboard shortcuts
-- **Customizable Interface**: Modern, responsive design
-- **Cross-Platform**: Works on macOS, Windows, and Linux
-
-## Installation
-
-### Prerequisites
-- Node.js 18+ 
-- npm or yarn
-- OpenAI API key
-- ElevenLabs API key (optional, for voice features)
-
-### Quick Start
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/djleamen/mai-buddy.git
-   cd mai-buddy
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Start the application**
-   ```bash
-   npm start
-   ```
-
-4. **Configure API keys**
-   - Click the settings icon in the app
-   - Add your OpenAI API key
-   - Optionally add ElevenLabs API key for voice features
-
-## Configuration
-
-### API Keys
-- **OpenAI**: Required for AI functionality
-- **ElevenLabs**: Optional for text-to-speech
-- **Service-specific keys**: Required for each MCP connection you want to use
-
-### Hotkeys (Default)
-- `Cmd/Ctrl + Shift + M`: Show/hide chat window
-- `Cmd/Ctrl + Shift + V`: Voice activation
-- `Cmd/Ctrl + Shift + C`: Quick capture
-- `Cmd/Ctrl + Shift + L`: Toggle listening
-- `Escape`: Hide window
-
-### Voice Settings
-- **Voice Selection**: Choose from available ElevenLabs voices
-- **Stability**: Control voice consistency (0.0 - 1.0)
-- **Similarity Boost**: Enhance voice similarity (0.0 - 1.0)
-- **Trigger Phrase**: "Mai Buddy" (customizable)
-
-## MCP Connections
-
-Mai Buddy supports the Model Context Protocol for extending functionality. Available connection types:
-
-### Development Tools
-- **GitHub**: Repository management, issue tracking, code search
-- **GitLab**: Project management, CI/CD, merge requests
-- **VS Code**: Editor integration, file operations
-- **Docker**: Container management, image building
-
-### Communication Platforms
-- **Slack**: Team messaging, channel management
-- **Discord**: Server management, voice channels
-- **Microsoft Teams**: Collaboration, meetings
-
-### Productivity Services
-- **Notion**: Database management, page creation
-- **Trello**: Board management, card operations
-- **Asana**: Project tracking, task management
-
-### Cloud Platforms
-- **AWS**: EC2, S3, Lambda management
-- **Google Cloud**: Compute Engine, Cloud Storage
-- **Azure**: Virtual machines, storage accounts
-- **DigitalOcean**: Droplet management, Spaces
-
-### Databases
-- **PostgreSQL**: Query execution, schema management
-- **MySQL**: Table operations, data import
-- **MongoDB**: Document operations, collections
-- **Redis**: Key-value operations, caching
-
-## Development
-
-### Building
+## Quick Start
 
 ```bash
-# Development mode
-npm run dev
+git clone https://github.com/djleamen/mai-buddy.git
+cd mai-buddy/python
 
-# Build for current platform
-npm run build
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 
-# Build for specific platforms
-npm run build-mac
-npm run build-win
-npm run build-linux
+python main.py
 ```
 
-### Custom MCP Servers
+On first launch, click the **gear icon** to open Settings and paste your Anthropic API key. Optionally add a GitHub personal access token to enable the GitHub tools.
 
-Create custom MCP servers to extend Mai Buddy's capabilities:
+### Environment variables (optional)
 
-```javascript
-// Example custom MCP server
-const WebSocket = require('ws');
+Create a `.env` at the repo root:
 
-const server = new WebSocket.Server({ port: 3001 });
-
-server.on('connection', (ws) => {
-  ws.on('message', (data) => {
-    const message = JSON.parse(data);
-    
-    if (message.method === 'tools/call') {
-      // Handle custom tool calls
-      const result = handleCustomTool(message.params);
-      
-      ws.send(JSON.stringify({
-        jsonrpc: '2.0',
-        id: message.id,
-        result: result
-      }));
-    }
-  });
-});
+```dotenv
+ANTHROPIC_API_KEY=sk-ant-...
+GITHUB_TOKEN=ghp_...
 ```
 
-## Contributing
+Settings entered in the UI take precedence and are stored in the macOS keychain.
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+## macOS Permissions
+
+The global hotkey relies on `pynput` and requires **Accessibility** permission for the process running Python (your terminal or IDE). Grant it under:
+
+> System Settings → Privacy & Security → Accessibility
+
+If permission is denied the app still runs — only the global hotkey is disabled.
+
+## Hotkeys
+
+| Shortcut         | Action                  |
+| ---------------- | ----------------------- |
+| `Cmd+Shift+M`    | Show / hide the window  |
+
+## Project Layout
+
+```
+python/
+  main.py                 # pywebview entry point
+  api.py                  # JS ⇄ Python IPC dispatcher
+  services/
+    ai_service.py         # Anthropic Claude wrapper + tool-use loop
+    history_store.py      # Persistent conversation history (JSON)
+    mcp_tools.py          # Built-in tools (filesystem, shell, GitHub)
+    store.py              # Settings + keychain secret storage
+    tray_service.py       # Menu-bar icon (pystray)
+    hotkey_service.py     # HTML/CSS/JS UI loaded by pywebview
+assets/                   # Icons
+```
+> The legacy Electron source under `src/main/` is no longer used and will be removed in a future commit.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Support
-
-- 📧 Email: dilara_leamen@icloud.com
-- 🐛 Issues: [GitHub Issues](https://github.com/djleamen/mai-buddy/issues)
-
-## Roadmap
-
-- [ ] Plugin system for custom extensions
-- [ ] Local LLM support (Ollama integration)
-- [ ] Advanced voice commands and workflows
-- [ ] Mobile companion app
-- [ ] Team collaboration features
-- [ ] Workflow automation builder
-- [ ] Enhanced MCP protocol support
-
----
-
-**Mai Buddy** - Your personal AI companion, always ready to assist! 🤖✨
+MIT — see [LICENSE](LICENSE).

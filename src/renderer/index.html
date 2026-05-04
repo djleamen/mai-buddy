@@ -1,5 +1,3 @@
-<!-- Main application container -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,11 +8,10 @@
 </head>
 <body>
     <div id="app">
-        <!-- Title Bar -->
-        <div class="title-bar">
-            <div class="title-bar-left">
-                <img src="../../assets/icon.png" alt="Mai Buddy" class="app-icon">
-                <span class="app-title">Mai Buddy</span>
+        <div class="title-bar" data-pywebview-drag-region>
+            <div class="title-bar-left" data-pywebview-drag-region>
+                <img src="../../assets/icon.png" alt="Mai Buddy" class="app-icon" data-pywebview-drag-region>
+                <span class="app-title" data-pywebview-drag-region>Mai Buddy</span>
             </div>
             <div class="title-bar-right">
                 <button id="settingsBtn" class="title-bar-btn" title="Settings">
@@ -35,7 +32,6 @@
             </div>
         </div>
 
-        <!-- Connection Status -->
         <div id="connectionStatus" class="connection-status">
             <div class="status-indicator offline"></div>
             <span class="status-text">Connecting...</span>
@@ -44,10 +40,8 @@
             </button>
         </div>
 
-        <!-- Chat Container -->
         <div id="chatContainer" class="chat-container">
             <div id="chatMessages" class="chat-messages">
-                <!-- Welcome message will be added here -->
             </div>
             <button id="scrollToBottomBtn" class="scroll-to-bottom-btn hidden" title="Scroll to bottom">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -56,7 +50,6 @@
             </button>
         </div>
 
-        <!-- Input Container -->
         <div class="input-container">
             <div class="input-wrapper">
                 <button id="voiceBtn" class="voice-btn" title="Voice Input">
@@ -77,7 +70,6 @@
         </div>
     </div>
 
-    <!-- Settings Modal -->
     <div id="settingsModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
@@ -111,15 +103,15 @@
                 <div id="aiTab" class="tab-content">
                     <h3>AI Settings</h3>
                     <div class="setting-group">
-                        <label for="openaiApiKey">OpenAI API Key</label>
-                        <input type="password" id="openaiApiKey" placeholder="sk-...">
+                        <label for="anthropicApiKey">Anthropic API Key</label>
+                        <input type="password" id="anthropicApiKey" placeholder="sk-ant-...">
                     </div>
                     <div class="setting-group">
                         <label for="aiModel">Model</label>
                         <select id="aiModel">
-                            <option value="gpt-4">GPT-4</option>
-                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                            <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                            <option value="claude-opus-4-5">Claude Opus 4.5</option>
+                            <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
                         </select>
                     </div>
                     <div class="setting-group">
@@ -174,7 +166,6 @@
         </div>
     </div>
 
-    <!-- MCP Manager Modal -->
     <div id="mcpModal" class="modal hidden">
         <div class="modal-content large">
             <div class="modal-header">
@@ -200,12 +191,14 @@
                     </div>
                 </div>
                 <div id="mcpConnectionsList" class="mcp-connections-list">
-                    <!-- MCP connections will be populated here -->
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.5/dist/purify.min.js"></script>
+    <script src="pywebview-bridge.js"></script>
     <script src="renderer.js"></script>
 </body>
 </html>
