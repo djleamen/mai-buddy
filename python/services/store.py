@@ -18,7 +18,13 @@ except ImportError:  # pragma: no cover - keyring optional in dev
     keyring = None  # type: ignore
 
 KEYRING_SERVICE = "mai-buddy"
-SECRET_KEYS = ("apiKey", "anthropicApiKey", "openaiApiKey", "elevenLabsApiKey")
+SECRET_KEYS = (
+    "apiKey",
+    "anthropicApiKey",
+    "openaiApiKey",
+    "elevenLabsApiKey",
+    "githubToken",
+)
 
 
 def _config_dir() -> Path:
@@ -127,3 +133,25 @@ def get_api_key() -> str:
         or _get_secret("apiKey")
         or os.environ.get("ANTHROPIC_API_KEY", "")
     )
+
+
+def update_settings(partial: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge ``partial`` into stored settings without dropping other keys.
+
+    Secret keys are routed to the keychain; everything else is merged into the
+    JSON file. Returns the resulting settings dict (with secrets reattached).
+    """
+    if not partial:
+        return get_settings()
+    raw = _load_raw()
+    for key, value in partial.items():
+        if key in SECRET_KEYS:
+            _set_secret(key, str(value or ""))
+            continue
+        raw[key] = value
+    _save_raw(raw)
+    return get_settings()
+
+
+def has_secret(name: str) -> bool:
+    return bool(_get_secret(name))

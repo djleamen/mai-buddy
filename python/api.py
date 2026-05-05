@@ -74,6 +74,14 @@ class Api:
     def do_mcp_get_available_types(self) -> Dict[str, Any]:
         return {"success": True, "types": mcp_tools.list_available_types()}
 
+    def do_mcp_get_connection_schema(self, type_or_id: str | None = None) -> Dict[str, Any]:
+        return {"success": True, "schema": mcp_tools.get_connection_schema(type_or_id or "")}
+
+    def do_mcp_save_connection_config(
+        self, type_or_id: str | None = None, values: Dict[str, Any] | None = None,
+    ) -> Dict[str, Any]:
+        return mcp_tools.save_connection_config(type_or_id or "", values or {})
+
     def do_mcp_add_connection(self, *_args: Any) -> Dict[str, Any]:
         return {"success": True}
 

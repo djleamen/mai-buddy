@@ -263,22 +263,112 @@ def list_connections() -> List[Dict[str, Any]]:
         by_type.setdefault(t.type, []).append(t.name)
     out: List[Dict[str, Any]] = []
     for type_, names in by_type.items():
+        schema = get_connection_schema(type_)
+        configured = schema["configured"]
         out.append({
             "id": type_,
             "name": type_.title(),
             "type": type_,
             "category": "System" if type_ in ("filesystem", "system") else "Development",
-            "status": "connected",
+            "status": "connected" if configured else "needs-config",
+            "configured": configured,
+            "requiresConfig": schema["requiresConfig"],
             "tools": names,
         })
     return out
 
 def list_available_types() -> List[Dict[str, Any]]:
     return [
-        {"type": "filesystem", "name": "Filesystem", "category": "System"},
-        {"type": "system", "name": "System / Shell", "category": "System"},
-        {"type": "github", "name": "GitHub", "category": "Development"},
+        {"type": "filesystem", "name": "Filesystem", "category": "System",
+         "description": "Read files in your home directory."},
+        {"type": "system", "name": "System / Shell", "category": "System",
+         "description": "Run safe shell commands."},
+        {"type": "github", "name": "GitHub", "category": "Development",
+         "description": "Access repositories, issues, and pull requests."},
     ]
+
+
+# UI-driven per-type configuration. Each field is rendered dynamically by the
+# renderer's "Add Connection" / "Configure" modal.
+_CONNECTION_SCHEMAS: Dict[str, List[Dict[str, Any]]] = {
+    "filesystem": [],
+    "system": [],
+    "github": [
+        {
+            "key": "githubToken",
+            "label": "Personal Access Token",
+            "type": "password",
+            "secret": True,
+            "placeholder": "ghp_...",
+            "help": "Create at github.com/settings/tokens with repo + read:user scopes.",
+        },
+    ],
+}
+
+
+def _normalise_type(type_or_id: str) -> str:
+    cid = (type_or_id or "").lower()
+    if cid in ("fs", "files"):
+        return "filesystem"
+    if cid in ("shell", "terminal"):
+        return "system"
+    if cid in ("gh",):
+        return "github"
+    return cid
+
+
+def get_connection_schema(type_or_id: str) -> Dict[str, Any]:
+    """Return the dynamic UI schema + current values for a connection type.
+
+    Secret values are never echoed back; instead each secret field gets a
+    ``hasValue`` boolean so the UI can show a "configured" hint.
+    """
+    type_ = _normalise_type(type_or_id)
+    fields = _CONNECTION_SCHEMAS.get(type_, [])
+    settings = store.get_settings()
+    out_fields: List[Dict[str, Any]] = []
+    configured = True
+    for field in fields:
+        item = dict(field)
+        key = field["key"]
+        if field.get("secret"):
+            item["value"] = ""
+            item["hasValue"] = bool(settings.get(key))
+            if not item["hasValue"]:
+                configured = False
+        else:
+            item["value"] = settings.get(key, "")
+            if not item["value"]:
+                configured = False
+        out_fields.append(item)
+    return {
+        "type": type_,
+        "fields": out_fields,
+        "configured": configured if fields else True,
+        "requiresConfig": bool(fields),
+    }
+
+
+def save_connection_config(type_or_id: str, values: Dict[str, Any]) -> Dict[str, Any]:
+    type_ = _normalise_type(type_or_id)
+    fields = _CONNECTION_SCHEMAS.get(type_)
+    if fields is None:
+        return {"success": False, "error": f"Unknown connection type: {type_}"}
+    partial: Dict[str, Any] = {}
+    values = values or {}
+    for field in fields:
+        key = field["key"]
+        if key not in values:
+            continue
+        new_value = values.get(key)
+        # Skip empty secret writes so users can leave the field blank to keep
+        # the existing keychain entry intact.
+        if field.get("secret") and not new_value:
+            continue
+        partial[key] = new_value
+    if partial:
+        store.update_settings(partial)
+    return {"success": True, "type": type_, "saved": list(partial.keys())}
 
 
 def test_connection(connection_id: str) -> Dict[str, Any]:
@@ -311,16 +401,19 @@ def test_connection(connection_id: str) -> Dict[str, Any]:
             return {"success": False, "message": "Python 'requests' package not installed"}
         settings = store.get_settings()
         token = settings.get("githubToken") or os.environ.get("GITHUB_TOKEN", "")
+        if not token:
+            return {
+                "success": False,
+                "message": "No GitHub token configured. Click Configure to add a personal access token.",
+            }
         try:
-            if token:
-                data = _gh_get("/user")
-                login = data.get("login") if isinstance(data, dict) else None
-                return {"success": True, "message": f"Authenticated as {login or 'GitHub user'}"}
-            # Unauthenticated reachability check
-            _gh_get("/")
-            return {"success": True, "message": "GitHub reachable (no token configured)"}
+            data = _gh_get("/user")
         except Exception as exc:
-            return {"success": False, "message": f"GitHub check failed: {exc}"}
+            return {"success": False, "message": f"GitHub auth failed: {exc}"}
+        login = data.get("login") if isinstance(data, dict) else None
+        if not login:
+            return {"success": False, "message": "GitHub responded but did not return a user (token may be invalid)"}
+        return {"success": True, "message": f"Authenticated as {login}"}
 
-    # Unknown connection id — be permissive but explicit.
-    return {"success": True, "message": f"No specific test for '{connection_id}'"}
+    # Unknown connection id — treat as a failure so the UI flags it.
+    return {"success": False, "message": f"Unknown connection '{connection_id}'"}
