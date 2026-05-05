@@ -371,49 +371,59 @@ def save_connection_config(type_or_id: str, values: Dict[str, Any]) -> Dict[str,
     return {"success": True, "type": type_, "saved": list(partial.keys())}
 
 
+def _test_filesystem() -> Dict[str, Any]:
+    home = Path.home()
+    if home.is_dir() and os.access(home, os.R_OK):
+        return {"success": True, "message": f"Filesystem reachable ({home})"}
+    return {"success": False, "message": f"Cannot read home directory: {home}"}
+
+
+def _test_system() -> Dict[str, Any]:
+    try:
+        proc = subprocess.run(
+            ["/bin/sh", "-c", "echo ok"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except Exception as exc:
+        return {"success": False, "message": f"Shell unavailable: {exc}"}
+    if proc.returncode == 0 and "ok" in proc.stdout:
+        return {"success": True, "message": "Shell available"}
+    return {"success": False, "message": f"Shell exit {proc.returncode}: {proc.stderr.strip()}"}
+
+
+def _test_github() -> Dict[str, Any]:
+    try:
+        import requests  # noqa: F401
+    except Exception:
+        return {"success": False, "message": "Python 'requests' package not installed"}
+    token = store.get_settings().get("githubToken") or os.environ.get("GITHUB_TOKEN", "")
+    if not token:
+        return {
+            "success": False,
+            "message": "No GitHub token configured. Click Configure to add a personal access token.",
+        }
+    try:
+        data = _gh_get("/user")
+    except Exception as exc:
+        return {"success": False, "message": f"GitHub auth failed: {exc}"}
+    login = data.get("login") if isinstance(data, dict) else None
+    if not login:
+        return {"success": False, "message": "GitHub responded but did not return a user (token may be invalid)"}
+    return {"success": True, "message": f"Authenticated as {login}"}
+
+
+_CONNECTION_TESTERS: Dict[str, Callable[[], Dict[str, Any]]] = {
+    "filesystem": _test_filesystem,
+    "system": _test_system,
+    "github": _test_github,
+}
+
+
 def test_connection(connection_id: str) -> Dict[str, Any]:
     """Lightweight per-connection health check used by the renderer's
     'Test connection' button. Returns ``{success, message}``.
     """
-    cid = (connection_id or "").lower()
-    if cid in ("filesystem", "fs", "files"):
-        home = Path.home()
-        if home.is_dir() and os.access(home, os.R_OK):
-            return {"success": True, "message": f"Filesystem reachable ({home})"}
-        return {"success": False, "message": f"Cannot read home directory: {home}"}
-
-    if cid in ("system", "shell", "terminal"):
-        try:
-            proc = subprocess.run(
-                ["/bin/sh", "-c", "echo ok"],
-                capture_output=True, text=True, timeout=5,
-            )
-            if proc.returncode == 0 and "ok" in proc.stdout:
-                return {"success": True, "message": "Shell available"}
-            return {"success": False, "message": f"Shell exit {proc.returncode}: {proc.stderr.strip()}"}
-        except Exception as exc:
-            return {"success": False, "message": f"Shell unavailable: {exc}"}
-
-    if cid in ("github", "gh"):
-        try:
-            import requests  # noqa: F401
-        except Exception:
-            return {"success": False, "message": "Python 'requests' package not installed"}
-        settings = store.get_settings()
-        token = settings.get("githubToken") or os.environ.get("GITHUB_TOKEN", "")
-        if not token:
-            return {
-                "success": False,
-                "message": "No GitHub token configured. Click Configure to add a personal access token.",
-            }
-        try:
-            data = _gh_get("/user")
-        except Exception as exc:
-            return {"success": False, "message": f"GitHub auth failed: {exc}"}
-        login = data.get("login") if isinstance(data, dict) else None
-        if not login:
-            return {"success": False, "message": "GitHub responded but did not return a user (token may be invalid)"}
-        return {"success": True, "message": f"Authenticated as {login}"}
-
-    # Unknown connection id — treat as a failure so the UI flags it.
-    return {"success": False, "message": f"Unknown connection '{connection_id}'"}
+    tester = _CONNECTION_TESTERS.get(_normalise_type(connection_id))
+    if tester is None:
+        return {"success": False, "message": f"Unknown connection '{connection_id}'"}
+    return tester()

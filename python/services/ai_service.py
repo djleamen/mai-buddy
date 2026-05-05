@@ -78,70 +78,18 @@ class AIService:
         original_len = len(self._history)
         self._history.append({"role": "user", "content": message})
 
-        tools = mcp_tools.anthropic_tools()
-        tool_executed = False
-        tool_error: str | None = None
-        last_tool_result: Any = None
-        usage_in = 0
-        usage_out = 0
-        last_model = self._model
-        reply_text = ""
+        state: Dict[str, Any] = {
+            "tool_executed": False,
+            "tool_error": None,
+            "last_tool_result": None,
+            "usage_in": 0,
+            "usage_out": 0,
+            "last_model": self._model,
+            "reply_text": "",
+        }
 
         try:
-            for _ in range(MAX_TOOL_ITERATIONS):
-                trimmed = self._history[-MAX_HISTORY_TURNS:]
-                response = self._client.messages.create(
-                    model=self._model,
-                    max_tokens=DEFAULT_MAX_TOKENS,
-                    system=self._system_prompt,
-                    messages=trimmed,
-                    tools=tools,
-                )
-                last_model = getattr(response, "model", self._model)
-                u = getattr(response, "usage", None)
-                if u:
-                    usage_in += getattr(u, "input_tokens", 0) or 0
-                    usage_out += getattr(u, "output_tokens", 0) or 0
-
-                assistant_blocks = [
-                    b.model_dump() if hasattr(b, "model_dump") else dict(b)
-                    for b in (response.content or [])
-                ]
-                self._history.append({"role": "assistant", "content": assistant_blocks})
-
-                if getattr(response, "stop_reason", None) != "tool_use":
-                    reply_text = "".join(
-                        b.get("text", "") for b in assistant_blocks
-                        if b.get("type") == "text"
-                    )
-                    break
-
-                tool_results: List[Dict[str, Any]] = []
-                for block in assistant_blocks:
-                    if block.get("type") != "tool_use":
-                        continue
-                    tool_executed = True
-                    name = block.get("name", "")
-                    tool_input = block.get("input") or {}
-                    log.info("AI invoking tool %s with %s", name, tool_input)
-                    res = mcp_tools.execute_tool(name, tool_input)
-                    last_tool_result = res
-                    if not res.get("success"):
-                        tool_error = res.get("error")
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.get("id"),
-                        "content": str(
-                            res.get("result") if res.get("success")
-                            else f"Error: {res.get('error')}"
-                        ),
-                        "is_error": not res.get("success"),
-                    })
-                if not tool_results:
-                    break
-                self._history.append({"role": "user", "content": tool_results})
-            else:
-                reply_text = reply_text or "(tool-use loop exceeded iteration cap)"
+            self._run_tool_loop(state)
         except Exception as exc:
             log.exception("Anthropic call failed")
             del self._history[original_len:]
@@ -151,14 +99,85 @@ class AIService:
 
         return {
             "success": True,
-            "response": reply_text,
-            "model": last_model,
+            "response": state["reply_text"],
+            "model": state["last_model"],
             "usage": {
-                "prompt_tokens": usage_in,
-                "completion_tokens": usage_out,
-                "total_tokens": usage_in + usage_out,
+                "prompt_tokens": state["usage_in"],
+                "completion_tokens": state["usage_out"],
+                "total_tokens": state["usage_in"] + state["usage_out"],
             },
-            "toolExecuted": tool_executed,
-            "toolError": tool_error,
-            "toolResult": last_tool_result if tool_executed else None,
+            "toolExecuted": state["tool_executed"],
+            "toolError": state["tool_error"],
+            "toolResult": state["last_tool_result"] if state["tool_executed"] else None,
         }
+
+    def _run_tool_loop(self, state: Dict[str, Any]) -> None:
+        tools = mcp_tools.anthropic_tools()
+        for _ in range(MAX_TOOL_ITERATIONS):
+            response = self._client.messages.create(
+                model=self._model,
+                max_tokens=DEFAULT_MAX_TOKENS,
+                system=self._system_prompt,
+                messages=self._history[-MAX_HISTORY_TURNS:],
+                tools=tools,
+            )
+            state["last_model"] = getattr(response, "model", self._model)
+            self._accumulate_usage(response, state)
+
+            assistant_blocks = [
+                b.model_dump() if hasattr(b, "model_dump") else dict(b)
+                for b in (response.content or [])
+            ]
+            self._history.append({"role": "assistant", "content": assistant_blocks})
+
+            if getattr(response, "stop_reason", None) != "tool_use":
+                state["reply_text"] = _extract_text(assistant_blocks)
+                return
+
+            tool_results = self._handle_tool_uses(assistant_blocks, state)
+            if not tool_results:
+                return
+            self._history.append({"role": "user", "content": tool_results})
+        else:
+            state["reply_text"] = state["reply_text"] or "(tool-use loop exceeded iteration cap)"
+
+    @staticmethod
+    def _accumulate_usage(response: Any, state: Dict[str, Any]) -> None:
+        u = getattr(response, "usage", None)
+        if not u:
+            return
+        state["usage_in"] += getattr(u, "input_tokens", 0) or 0
+        state["usage_out"] += getattr(u, "output_tokens", 0) or 0
+
+    @staticmethod
+    def _handle_tool_uses(
+        assistant_blocks: List[Dict[str, Any]], state: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
+        tool_results: List[Dict[str, Any]] = []
+        for block in assistant_blocks:
+            if block.get("type") != "tool_use":
+                continue
+            state["tool_executed"] = True
+            name = block.get("name", "")
+            tool_input = block.get("input") or {}
+            log.info("AI invoking tool %s with %s", name, tool_input)
+            res = mcp_tools.execute_tool(name, tool_input)
+            state["last_tool_result"] = res
+            if not res.get("success"):
+                state["tool_error"] = res.get("error")
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": block.get("id"),
+                "content": str(
+                    res.get("result") if res.get("success")
+                    else f"Error: {res.get('error')}"
+                ),
+                "is_error": not res.get("success"),
+            })
+        return tool_results
+
+
+def _extract_text(blocks: List[Dict[str, Any]]) -> str:
+    return "".join(
+        b.get("text", "") for b in blocks if b.get("type") == "text"
+    )
