@@ -453,7 +453,7 @@ class MaiBuddyRenderer {
       minimizeToTray: document.getElementById('minimizeToTray').checked,
       alwaysOnTop: document.getElementById('alwaysOnTop').checked,
       voiceId: document.getElementById('voiceId').value,
-      voiceStability: parseFloat(document.getElementById('voiceStability').value)
+      voiceStability: Number.parseFloat(document.getElementById('voiceStability').value)
     };
     
     try {
