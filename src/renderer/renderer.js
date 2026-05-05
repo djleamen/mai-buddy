@@ -234,8 +234,8 @@ class MaiBuddyRenderer {
   showWelcomeMessage() {
     const welcomeHtml = `
       <div class="welcome-message">
-        <h2>👋 Welcome to Mai Buddy!</h2>
-        <p>Your highly customizable AI assistant is ready to help.</p>
+        <h2>Welcome to Mai Buddy</h2>
+        <p>Your customizable AI assistant is ready to help.</p>
         <div class="quick-actions">
           <button class="quick-action" onclick="renderer.insertQuickMessage('What can you help me with?')">What can you do?</button>
           <button class="quick-action" onclick="renderer.insertQuickMessage('Show me my MCP connections')">MCP Status</button>
