@@ -1,0 +1,8 @@
+pywebview>=5.4
+anthropic>=0.39.0
+python-dotenv>=1.0.1
+keyring>=25.0.0
+pystray>=0.19.5
+Pillow>=10.0.0
+pynput>=1.7.6
+requests>=2.32.0

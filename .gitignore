@@ -140,3 +140,11 @@ yarn.lock
 .env.development.local
 .env.test.local
 .env.production.local
+
+python/.venv/
+python/__pycache__/
+python/*.pyc
+python/bin/
+python/lib/
+
+debug/

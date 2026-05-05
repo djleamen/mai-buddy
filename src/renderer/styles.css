@@ -1,16 +1,23 @@
 :root {
   --primary-color: #6366f1;
+  --primary-hover: #818cf8;
   --secondary-color: #8b5cf6;
   --accent-color: #06b6d4;
-  --background-color: rgba(15, 23, 42, 0.95);
-  --surface-color: rgba(30, 41, 59, 0.9);
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --border-color: rgba(71, 85, 105, 0.5);
-  --error-color: #ef4444;
-  --success-color: #10b981;
-  --warning-color: #f59e0b;
+  --background-color: rgba(11, 15, 25, 0.92);
+  --surface-color: rgba(24, 28, 42, 0.85);
+  --surface-elevated: rgba(36, 41, 58, 0.9);
+  --text-primary: #f5f6fa;
+  --text-secondary: #aab0c0;
+  --text-muted: #6b7385;
+  --border-color: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --error-color: #f87171;
+  --success-color: #34d399;
+  --warning-color: #fbbf24;
+  --shadow-soft: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(0,0,0,0.35);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
 }
 
 * {
@@ -19,18 +26,22 @@
   box-sizing: border-box;
 }
 
+[hidden] { display: none !important; }
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--background-color);
+  font-family: 'Carlito', 'Calibri', 'Lato', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: transparent;
   color: var(--text-primary);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
   -webkit-user-select: none;
   user-select: none;
 }
 
 button, input, textarea, select {
-  -webkit-app-region: no-drag;
-  /* Fallback for non-webkit browsers */
+  font-family: inherit;
   pointer-events: auto;
 }
 
@@ -38,22 +49,23 @@ button, input, textarea, select {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
+  background: linear-gradient(180deg, rgba(15, 19, 32, 0.96) 0%, rgba(11, 14, 24, 0.96) 100%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 14px;
   overflow: hidden;
+  box-shadow: var(--shadow-soft);
 }
 .title-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  background: var(--surface-color);
+  padding: 10px 14px;
+  background: transparent;
   border-bottom: 1px solid var(--border-color);
   -webkit-app-region: drag;
-  /* Fallback for non-webkit browsers */
-  cursor: move;
+  cursor: default;
 }
 
 .title-bar-left {
@@ -65,34 +77,42 @@ button, input, textarea, select {
 .app-icon {
   width: 16px;
   height: 16px;
+  border-radius: 4px;
+  opacity: 0.95;
+  display: block;
+  flex-shrink: 0;
 }
 
 .app-title {
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
 .title-bar-right {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   -webkit-app-region: no-drag;
-  /* Fallback for non-webkit browsers */
   pointer-events: auto;
-}
-  display: flex;
-  gap: 4px;
-  -webkit-app-region: no-drag;
 }
 
 .title-bar-btn {
   background: none;
   border: none;
   color: var(--text-secondary);
-  padding: 4px;
-  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .title-bar-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.07);
   color: var(--text-primary);
 }
 
@@ -100,25 +120,29 @@ button, input, textarea, select {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--surface-color);
+  padding: 8px 14px;
+  background: transparent;
   border-bottom: 1px solid var(--border-color);
-  font-size: 12px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
 }
 
 .status-indicator {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  margin-right: 6px;
+  margin-right: 8px;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.04);
 }
 
 .status-indicator.online {
   background: var(--success-color);
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15);
 }
 
 .status-indicator.offline {
   background: var(--error-color);
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15);
 }
 
 .status-indicator.connecting {
@@ -132,14 +156,16 @@ button, input, textarea, select {
 }
 
 .mcp-btn {
-  padding: 4px 8px;
+  padding: 4px 10px;
   font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  background: var(--surface-color);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  border-radius: 999px;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 .chat-container {
   flex: 1;
@@ -228,28 +254,97 @@ button, input, textarea, select {
 }
 
 .message-content {
-  max-width: 80%;
-  padding: 12px 16px;
-  border-radius: 18px;
-  font-size: 14px;
-  line-height: 1.4;
+  max-width: 82%;
+  padding: 9px 13px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
   word-wrap: break-word;
   -webkit-user-select: text;
-  user-select: text; /* Allow text selection */
-  cursor: text; /* Show text cursor */
+  user-select: text;
+  cursor: text;
 }
 
 .message.user .message-content {
-  background: var(--primary-color);
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
   color: white;
-  border-bottom-right-radius: 6px;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
 }
 
 .message.assistant .message-content {
   background: var(--surface-color);
   color: var(--text-primary);
-  border-bottom-left-radius: 6px;
+  border-bottom-left-radius: 4px;
   border: 1px solid var(--border-color);
+}
+
+/* Markdown rendering inside assistant bubbles */
+.message-content.markdown > *:first-child { margin-top: 0; }
+.message-content.markdown > *:last-child { margin-bottom: 0; }
+.message-content.markdown p { margin: 0 0 8px 0; }
+.message-content.markdown h1,
+.message-content.markdown h2,
+.message-content.markdown h3,
+.message-content.markdown h4 {
+  margin: 10px 0 6px 0;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.message-content.markdown h1 { font-size: 1.15em; }
+.message-content.markdown h2 { font-size: 1.1em; }
+.message-content.markdown h3 { font-size: 1.05em; }
+.message-content.markdown ul,
+.message-content.markdown ol {
+  margin: 4px 0 8px 0;
+  padding-left: 22px;
+}
+.message-content.markdown li { margin: 2px 0; }
+.message-content.markdown a {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+.message-content.markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.message-content.markdown pre {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 6px 0 8px 0;
+  overflow-x: auto;
+}
+.message-content.markdown pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+.message-content.markdown blockquote {
+  margin: 6px 0;
+  padding: 2px 10px;
+  border-left: 3px solid var(--primary-color);
+  color: var(--text-secondary);
+}
+.message-content.markdown table {
+  border-collapse: collapse;
+  margin: 6px 0;
+  font-size: 0.9em;
+}
+.message-content.markdown th,
+.message-content.markdown td {
+  border: 1px solid var(--border-color);
+  padding: 4px 8px;
+}
+.message-content.markdown hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 10px 0;
 }
 
 /* Tool Execution Messages */
@@ -336,38 +431,46 @@ button, input, textarea, select {
 
 /* Input Container */
 .input-container {
-  padding: 16px;
-  background: var(--surface-color);
+  padding: 12px 14px 14px;
+  background: transparent;
   border-top: 1px solid var(--border-color);
 }
 
 .input-wrapper {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
-  background: var(--background-color);
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-color);
-  border-radius: 20px;
-  padding: 8px;
+  border-radius: 14px;
+  padding: 6px 6px 6px 8px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.input-wrapper:focus-within {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .voice-btn, .send-btn {
   background: none;
   border: none;
   color: var(--text-secondary);
-  padding: 8px;
-  border-radius: 50%;
+  padding: 7px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.15s ease, color 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .voice-btn:hover, .send-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--primary-color);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
 }
+
+.send-btn:hover { color: var(--primary-color); }
 
 .voice-btn.active {
   background: var(--primary-color);
@@ -379,13 +482,14 @@ button, input, textarea, select {
   background: none;
   border: none;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 13.5px;
   resize: none;
   outline: none;
-  min-height: 20px;
+  min-height: 22px;
   max-height: 100px;
-  padding: 8px 0;
+  padding: 6px 4px;
   font-family: inherit;
+  line-height: 1.45;
 }
 
 #messageInput::placeholder {
@@ -394,9 +498,20 @@ button, input, textarea, select {
 
 .input-hint {
   margin-top: 8px;
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--text-muted);
   text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.input-hint kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
 }
 .modal {
   position: fixed;
@@ -419,51 +534,56 @@ button, input, textarea, select {
 }
 
 .modal-content {
-  background: var(--background-color);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  width: 500px;
+  background: linear-gradient(180deg, rgba(20, 24, 38, 0.98) 0%, rgba(14, 17, 28, 0.98) 100%);
+  border: 1px solid var(--border-strong);
+  border-radius: 14px;
+  width: 520px;
   max-width: 90vw;
   max-height: 90vh;
   overflow: hidden;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) inset;
 }
 
 .modal-content.large {
-  width: 700px;
+  width: 720px;
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 14px 20px;
   border-bottom: 1px solid var(--border-color);
-  background: var(--surface-color);
+  background: transparent;
 }
 
 .modal-header h2 {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--text-primary);
 }
 
 .close-btn {
   background: none;
   border: none;
-  color: var(--text-secondary);
-  font-size: 24px;
+  color: var(--text-muted);
+  font-size: 22px;
   cursor: pointer;
   padding: 0;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .close-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-primary);
 }
 
@@ -476,36 +596,103 @@ button, input, textarea, select {
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 16px 20px;
+  gap: 8px;
+  padding: 14px 20px;
   border-top: 1px solid var(--border-color);
-  background: var(--surface-color);
+  background: transparent;
+}
+
+/* Generic form fields used inside modals (e.g. MCP Add/Configure) */
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: rgba(99, 102, 241, 0.55);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.form-help {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.badge-configured {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  vertical-align: middle;
 }
 
 /* Settings */
 .settings-tabs {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   margin-bottom: 20px;
-  background: var(--surface-color);
-  border-radius: 8px;
-  padding: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 3px;
 }
 
 .tab-btn {
+  flex: 1;
   background: none;
   border: none;
   color: var(--text-secondary);
-  padding: 8px 16px;
-  border-radius: 6px;
+  padding: 7px 10px;
+  border-radius: 7px;
   cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s ease;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
 }
 
 .tab-btn.active {
-  background: var(--primary-color);
-  color: white;
+  background: rgba(99, 102, 241, 0.18);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.35);
 }
 
 .tab-content {
@@ -516,14 +703,23 @@ button, input, textarea, select {
   display: block;
 }
 
+.tab-content h3 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
 .setting-group {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .setting-group label {
   display: block;
   margin-bottom: 6px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
 }
@@ -532,20 +728,83 @@ button, input, textarea, select {
 .setting-group select,
 .setting-group textarea {
   width: 100%;
-  background: var(--surface-color);
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 8px 12px;
+  border-radius: 8px;
+  padding: 9px 12px;
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.setting-group input:focus,
+.setting-group select:focus,
+.setting-group textarea:focus {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Checkbox rows: inline layout with custom styled box */
+.setting-group:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.setting-group:has(> input[type="checkbox"]) label {
+  margin: 0;
+  font-weight: 400;
+  color: var(--text-secondary);
 }
 
 .setting-group input[type="checkbox"] {
-  width: auto;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-color);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+.setting-group input[type="checkbox"]::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #d4d6df;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.setting-group input[type="checkbox"]:checked {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.setting-group input[type="checkbox"]:checked::after {
+  transform: translateX(14px);
+  background: #fff;
 }
 
 .setting-group input[type="range"] {
   margin-right: 12px;
+  padding: 0;
+  background: transparent;
+  border: none;
 }
 
 .hotkey-input {
@@ -569,40 +828,46 @@ button, input, textarea, select {
 
 /* Buttons */
 .btn {
-  background: var(--surface-color);
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  padding: 8px 12px;
-  font-size: 12px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  padding: 8px 14px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   justify-content: center;
 }
 
-.btn.primary {
+.btn.primary,
+.btn.btn-primary {
   background: var(--primary-color);
   color: white;
   border-color: var(--primary-color);
 }
 
-.btn.secondary {
-  background: var(--surface-color);
+.btn.secondary,
+.btn.btn-secondary {
+  background: transparent;
   color: var(--text-secondary);
 }
 
 .btn:hover {
-  transform: translateY(-1px);
-  background: var(--primary-color);
-  border-color: var(--primary-color);
-  color: white;
+  background: rgba(255, 255, 255, 0.07);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
-.btn.primary:hover {
-  background: var(--secondary-color);
+.btn.primary:hover,
+.btn.btn-primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+  color: white;
 }
 
 /* MCP Connections */
@@ -692,43 +957,51 @@ button, input, textarea, select {
 /* Welcome Message */
 .welcome-message {
   text-align: center;
-  padding: 40px 20px;
+  padding: 56px 24px 32px;
   color: var(--text-secondary);
 }
 
 .welcome-message h2 {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
+  letter-spacing: -0.02em;
   margin-bottom: 8px;
+  background: linear-gradient(135deg, #f5f6fa 0%, #aab0c0 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
   color: var(--text-primary);
 }
 
 .welcome-message p {
-  font-size: 14px;
-  margin-bottom: 20px;
+  font-size: 13px;
+  margin-bottom: 22px;
+  color: var(--text-muted);
 }
 
 .quick-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   justify-content: center;
 }
 
 .quick-action {
-  background: var(--surface-color);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
-  padding: 8px 12px;
-  border-radius: 16px;
+  padding: 7px 12px;
+  border-radius: 999px;
   cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s ease;
+  font-size: 11.5px;
+  font-weight: 500;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .quick-action:hover {
-  border-color: var(--primary-color);
-  color: var(--primary-color);
+  background: rgba(99, 102, 241, 0.12);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: var(--text-primary);
 }
 
 .mcp-btn.active {
