@@ -81,7 +81,13 @@ class Api:
         return {"success": True}
 
     def do_mcp_test_connection(self, connection_id: str | None = None) -> Dict[str, Any]:
-        return {"success": True, "connected": True, "id": connection_id}
+        # Renderer expects {success, result: {success, message}}.
+        try:
+            inner = mcp_tools.test_connection(connection_id or "")
+        except Exception as exc:
+            log.exception("mcp test_connection failed")
+            inner = {"success": False, "message": str(exc)}
+        return {"success": True, "result": inner, "id": connection_id}
 
     def do_mcp_get_tools(self, connection_type: str | None = None) -> Dict[str, Any]:
         return {"success": True, "tools": mcp_tools.list_tools(connection_type)}

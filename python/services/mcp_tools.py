@@ -279,3 +279,48 @@ def list_available_types() -> List[Dict[str, Any]]:
         {"type": "system", "name": "System / Shell", "category": "System"},
         {"type": "github", "name": "GitHub", "category": "Development"},
     ]
+
+
+def test_connection(connection_id: str) -> Dict[str, Any]:
+    """Lightweight per-connection health check used by the renderer's
+    'Test connection' button. Returns ``{success, message}``.
+    """
+    cid = (connection_id or "").lower()
+    if cid in ("filesystem", "fs", "files"):
+        home = Path.home()
+        if home.is_dir() and os.access(home, os.R_OK):
+            return {"success": True, "message": f"Filesystem reachable ({home})"}
+        return {"success": False, "message": f"Cannot read home directory: {home}"}
+
+    if cid in ("system", "shell", "terminal"):
+        try:
+            proc = subprocess.run(
+                ["/bin/sh", "-c", "echo ok"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if proc.returncode == 0 and "ok" in proc.stdout:
+                return {"success": True, "message": "Shell available"}
+            return {"success": False, "message": f"Shell exit {proc.returncode}: {proc.stderr.strip()}"}
+        except Exception as exc:
+            return {"success": False, "message": f"Shell unavailable: {exc}"}
+
+    if cid in ("github", "gh"):
+        try:
+            import requests  # noqa: F401
+        except Exception:
+            return {"success": False, "message": "Python 'requests' package not installed"}
+        settings = store.get_settings()
+        token = settings.get("githubToken") or os.environ.get("GITHUB_TOKEN", "")
+        try:
+            if token:
+                data = _gh_get("/user")
+                login = data.get("login") if isinstance(data, dict) else None
+                return {"success": True, "message": f"Authenticated as {login or 'GitHub user'}"}
+            # Unauthenticated reachability check
+            _gh_get("/")
+            return {"success": True, "message": "GitHub reachable (no token configured)"}
+        except Exception as exc:
+            return {"success": False, "message": f"GitHub check failed: {exc}"}
+
+    # Unknown connection id — be permissive but explicit.
+    return {"success": True, "message": f"No specific test for '{connection_id}'"}
