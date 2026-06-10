@@ -640,7 +640,7 @@ class MaiBuddyRenderer {
             <select id="mcpTypePicker">
               <option value="">Select a connection&hellip;</option>
               ${types.map(t => `
-                <option value="${t.type}">${t.name}${t.category ? ` &middot; ${t.category}` : ''}</option>
+                <option value="${this.escapeHtml(t.type)}">${this.escapeHtml(t.name)}${t.category ? ` &middot; ${this.escapeHtml(t.category)}` : ''}</option>
               `).join('')}
             </select>
             <small class="form-help" id="mcpTypeHelp"></small>
@@ -726,11 +726,12 @@ class MaiBuddyRenderer {
         : (field.placeholder || '');
       const inputType = field.type === 'password' ? 'password' : (field.type || 'text');
       const value = field.secret ? '' : (field.value || '');
+      const safeKey = this.escapeHtml(field.key);
       return `
         <div class="form-group">
-          <label for="mcp-field-${field.key}">${field.label}${field.secret && field.hasValue ? ' <span class="badge-configured">configured</span>' : ''}</label>
-          <input id="mcp-field-${field.key}" data-field-key="${field.key}" data-secret="${field.secret ? '1' : '0'}" type="${inputType}" placeholder="${placeholder}" value="${value}" autocomplete="off" spellcheck="false">
-          ${field.help ? `<small class="form-help">${field.help}</small>` : ''}
+          <label for="mcp-field-${safeKey}">${this.escapeHtml(field.label)}${field.secret && field.hasValue ? ' <span class="badge-configured">configured</span>' : ''}</label>
+          <input id="mcp-field-${safeKey}" data-field-key="${safeKey}" data-secret="${field.secret ? '1' : '0'}" type="${inputType}" placeholder="${this.escapeHtml(placeholder)}" value="${this.escapeHtml(value)}" autocomplete="off" spellcheck="false">
+          ${field.help ? `<small class="form-help">${this.escapeHtml(field.help)}</small>` : ''}
         </div>
       `;
     }).join('');
@@ -921,6 +922,12 @@ class MaiBuddyRenderer {
       console.error('Error removing MCP connection:', error);
       this.showNotification('Failed to remove connection', 'error');
     }
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text == null ? '' : String(text);
+    return div.innerHTML.replaceAll('"', '&quot;');
   }
 
   showNotification(message, type = 'info') {
