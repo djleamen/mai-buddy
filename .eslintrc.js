@@ -23,6 +23,8 @@ module.exports = {
     'module': 'readonly',
     'process': 'readonly',
     '__dirname': 'readonly',
-    'console': 'readonly'
+    'console': 'readonly',
+    'marked': 'readonly',
+    'DOMPurify': 'readonly'
   }
 };
