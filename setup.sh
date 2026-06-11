@@ -2,26 +2,29 @@
 
 echo "🤖 Setting up Mai Buddy..."
 
-# Check if Node.js is installed
-if ! command -v node &> /dev/null; then
-    echo "❌ Node.js is not installed. Please install Node.js 18+ first."
+# Check if Python is installed
+if ! command -v python3 &> /dev/null; then
+    echo "❌ Python 3 is not installed. Please install Python 3.10+ first."
     exit 1
 fi
 
-# Check Node.js version
-NODE_VERSION=$(node -v | cut -d 'v' -f 2 | cut -d '.' -f 1)
-if [[ "$NODE_VERSION" -lt 18 ]]; then
-    echo "❌ Node.js version $NODE_VERSION is too old. Please install Node.js 18+."
+# Check Python version
+PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+PYTHON_MINOR=$(python3 -c 'import sys; print(sys.version_info.minor)')
+if [[ "$PYTHON_MINOR" -lt 10 ]]; then
+    echo "❌ Python version $PYTHON_VERSION is too old. Please install Python 3.10+."
     exit 1
 fi
 
-echo "✅ Node.js $(node -v) found"
+echo "✅ Python $PYTHON_VERSION found"
 
-# Install dependencies
+# Create the virtual environment and install dependencies
 echo "📦 Installing dependencies..."
-npm install
+cd python && python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
+INSTALL_STATUS=$?
+cd ..
 
-if [[ $? -eq 0 ]]; then
+if [[ $INSTALL_STATUS -eq 0 ]]; then
     echo "✅ Dependencies installed successfully"
 else
     echo "❌ Failed to install dependencies"
@@ -37,18 +40,15 @@ else
     echo "✅ .env file already exists"
 fi
 
-# Create temp directory
-mkdir -p temp
-
 echo ""
 echo "🎉 Mai Buddy setup complete!"
 echo ""
 echo "Next steps:"
 echo "1. Edit .env file with your API keys"
-echo "2. Run 'npm start' to launch Mai Buddy"
+echo "2. Run './start.sh' to launch Mai Buddy"
 echo "3. Configure your settings in the app"
 echo ""
-echo "For voice features, you'll need an ElevenLabs API key."
-echo "For AI functionality, you'll need an OpenAI API key."
+echo "For voice features, you'll need an ElevenLabs API key (set in-app)."
+echo "For AI functionality, you'll need an Anthropic API key."
 echo ""
 echo "Happy chatting with Mai Buddy! 🤖✨"
