@@ -166,7 +166,7 @@ class AIService:
                 model=self._model,
                 max_tokens=DEFAULT_MAX_TOKENS,
                 system=self._system_prompt,
-                messages=self._history[-MAX_HISTORY_TURNS:],
+                messages=_window_history(self._history, MAX_HISTORY_TURNS),
                 tools=tools,
             )
             state["last_model"] = getattr(response, "model", self._model)
@@ -229,3 +229,44 @@ def _extract_text(blocks: List[Dict[str, Any]]) -> str:
     return "".join(
         b.get("text", "") for b in blocks if b.get("type") == "text"
     )
+
+
+def _is_safe_window_start(message: Dict[str, Any]) -> bool:
+    """True if a history slice may begin at *message*.
+
+    The Messages API requires the first message to be a user turn, and a
+    ``tool_result`` block must always follow the assistant ``tool_use`` turn
+    that produced it — so a window can only open on a user message that
+    carries no tool results.
+    """
+    if message.get("role") != "user":
+        return False
+    content = message.get("content")
+    if isinstance(content, list):
+        return not any(
+            isinstance(b, dict) and b.get("type") == "tool_result"
+            for b in content
+        )
+    return True
+
+
+def _window_history(
+    history: List[Dict[str, Any]], max_turns: int
+) -> List[Dict[str, Any]]:
+    """Trailing slice of *history*, cut only at a safe boundary.
+
+    A plain index slice can land between a tool_use/tool_result pair and
+    produce a request the API rejects. Prefer shrinking the window forward
+    to the next safe start; if the whole window is one tool chain, grow it
+    backward instead (index 0 is always a plain user turn).
+    """
+    if len(history) <= max_turns:
+        return history
+    start = len(history) - max_turns
+    while start < len(history) and not _is_safe_window_start(history[start]):
+        start += 1
+    if start == len(history):
+        start = len(history) - max_turns
+        while start > 0 and not _is_safe_window_start(history[start]):
+            start -= 1
+    return history[start:]
