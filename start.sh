@@ -1,11 +1,11 @@
 #!/bin/bash
 
-echo "🚀 Starting Mai Buddy with MCP..."
+echo "🚀 Starting Mai Buddy..."
 
 # Check if dependencies are installed
-if [[ ! -d "node_modules" ]]; then
-    echo "📦 Installing dependencies..."
-    npm install
+if [[ ! -d "python/.venv" ]]; then
+    echo "📦 No virtual environment found — running setup first..."
+    ./setup.sh || exit 1
 fi
 
 # Check if .env file exists
@@ -15,13 +15,6 @@ if [[ ! -f ".env" ]]; then
     echo "⚠️  Please edit .env file with your API keys before running the app"
 fi
 
-# Test MCP setup (optional)
-if [[ "$1" = "--test-mcp" ]]; then
-    echo "🧪 Testing MCP setup..."
-    node test-mcp.js
-    echo ""
-fi
-
 # Start the application
 echo "🤖 Starting Mai Buddy..."
-npm start
+cd python && . .venv/bin/activate && python main.py
