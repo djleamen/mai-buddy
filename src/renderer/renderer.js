@@ -558,18 +558,18 @@ class MaiBuddyRenderer {
     
     container.innerHTML = Object.entries(groupedConnections).map(([category, connections]) => `
       <div class="mcp-category">
-        <h3 class="mcp-category-title">${category}</h3>
+        <h3 class="mcp-category-title">${this.escapeHtml(category)}</h3>
         <div class="mcp-connections-grid">
           ${connections.map(conn => `
             <div class="mcp-connection-card ${conn.status}">
               <div class="mcp-connection-header">
                 <div class="mcp-connection-info">
-                  <h4>${conn.name}</h4>
-                  <p>${conn.description}</p>
+                  <h4>${this.escapeHtml(conn.name)}</h4>
+                  <p>${this.escapeHtml(conn.description)}</p>
                   ${conn.capabilities ? `
                     <div class="mcp-capabilities">
                       ${conn.capabilities.slice(0, 3).map(cap => `
-                        <span class="capability-tag">${cap}</span>
+                        <span class="capability-tag">${this.escapeHtml(cap)}</span>
                       `).join('')}
                       ${(() => {
     return conn.capabilities.length > 3 ? `<span class="capability-more">+${conn.capabilities.length - 3}</span>` : '';
@@ -578,7 +578,7 @@ class MaiBuddyRenderer {
                   ` : ''}
                 </div>
                 <div class="mcp-connection-status">
-                  <div class="status-indicator ${conn.status}" title="${conn.status}"></div>
+                  <div class="status-indicator ${conn.status}" title="${this.escapeHtml(conn.status)}"></div>
                   ${conn.lastConnected ? `<small>${new Date(conn.lastConnected).toLocaleString()}</small>` : ''}
                 </div>
               </div>
@@ -815,7 +815,7 @@ class MaiBuddyRenderer {
         modal.innerHTML = `
           <div class="modal-content">
             <div class="modal-header">
-              <h2>Available Tools - ${connection?.name}</h2>
+              <h2>Available Tools - ${this.escapeHtml(connection?.name)}</h2>
               <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
             </div>
             <div class="modal-body">
@@ -827,8 +827,8 @@ class MaiBuddyRenderer {
                 <div class="tools-list">
                   ${tools.map(tool => `
                     <div class="tool-card">
-                      <h4>${tool.name}</h4>
-                      <p>${tool.description}</p>
+                      <h4>${this.escapeHtml(tool.name)}</h4>
+                      <p>${this.escapeHtml(tool.description)}</p>
                       ${tool.parameters ? `
                         <details>
                           <summary>Parameters</summary>
