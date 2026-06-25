@@ -298,7 +298,7 @@ class MaiBuddyRenderer {
         <span class="tool-label">Tool Executed</span>
       </div>
       <div class="tool-output">
-        <pre>${JSON.stringify(toolResult, null, 2)}</pre>
+        <pre>${this.escapeHtml(JSON.stringify(toolResult, null, 2))}</pre>
       </div>
     `;
     
@@ -832,7 +832,7 @@ class MaiBuddyRenderer {
                       ${tool.parameters ? `
                         <details>
                           <summary>Parameters</summary>
-                          <pre class="tool-parameters">${JSON.stringify(tool.parameters, null, 2)}</pre>
+                          <pre class="tool-parameters">${this.escapeHtml(JSON.stringify(tool.parameters, null, 2))}</pre>
                         </details>
                       ` : ''}
                       <button class="btn btn-sm" onclick="renderer.executeMCPTool('${connectionId}', '${tool.name}')">
@@ -886,7 +886,7 @@ class MaiBuddyRenderer {
               <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
             </div>
             <div class="modal-body">
-              <pre class="tool-result">${JSON.stringify(result.result, null, 2)}</pre>
+              <pre class="tool-result">${this.escapeHtml(JSON.stringify(result.result, null, 2))}</pre>
             </div>
           </div>
         `;
