@@ -27,7 +27,7 @@ _PROTECTED_ROOTS = (
 def _expand(p: str) -> str:
     return os.path.expanduser(p) if p else p
 
-def _assert_safe_write_path(raw: str) -> Path:
+def _assert_safe_path(raw: str) -> Path:
     if not isinstance(raw, str) or not raw:
         raise ValueError("Invalid path")
     resolved = Path(_expand(raw)).resolve()
@@ -42,20 +42,25 @@ def _assert_safe_write_path(raw: str) -> Path:
         raise ValueError(f"Path is outside the user home directory: {s}")
     return resolved
 
+# Backwards-compatible alias; reads, writes and listings share one guard so the
+# AI-callable filesystem tools cannot escape the home sandbox in any direction.
+_assert_safe_write_path = _assert_safe_path
+
 def _read_file(path: str, encoding: str = "utf-8") -> Dict[str, Any]:
-    expanded = _expand(path)
-    with open(expanded, "r", encoding=encoding) as fh:
-        return {"content": fh.read(), "path": expanded}
+    safe = _assert_safe_path(path)
+    with open(safe, "r", encoding=encoding) as fh:
+        return {"content": fh.read(), "path": str(safe)}
 
 def _write_file(path: str, content: str, encoding: str = "utf-8") -> Dict[str, Any]:
-    safe = _assert_safe_write_path(path)
+    safe = _assert_safe_path(path)
     safe.parent.mkdir(parents=True, exist_ok=True)
     with open(safe, "w", encoding=encoding) as fh:
         fh.write(content or "")
     return {"path": str(safe), "bytes": len(content or "")}
 
 def _list_directory(path: str) -> Dict[str, Any]:
-    expanded = _expand(path)
+    safe = _assert_safe_path(path)
+    expanded = str(safe)
     entries = []
     for entry in sorted(os.listdir(expanded)):
         full = os.path.join(expanded, entry)
