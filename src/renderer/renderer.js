@@ -835,7 +835,7 @@ class MaiBuddyRenderer {
                           <pre class="tool-parameters">${this.escapeHtml(JSON.stringify(tool.parameters, null, 2))}</pre>
                         </details>
                       ` : ''}
-                      <button class="btn btn-sm" onclick="renderer.executeMCPTool('${connectionId}', '${tool.name}')">
+                      <button class="btn btn-sm" onclick="renderer.executeMCPTool('${tool.name}')">
                         Execute Tool
                       </button>
                     </div>
@@ -859,11 +859,11 @@ class MaiBuddyRenderer {
     }
   }
 
-  async executeMCPTool(connectionId, toolName) {
+  async executeMCPTool(toolName) {
     const parameters = {};
     
     if (toolName === 'list_directory') {
-      parameters.path = prompt('Enter directory path:', process.cwd() || '/');
+      parameters.path = prompt('Enter directory path:', '~');
       if (!parameters.path) return;
     } else if (toolName === 'execute_command') {
       parameters.command = prompt('Enter command to execute:', 'echo "Hello from MCP!"');
@@ -874,7 +874,7 @@ class MaiBuddyRenderer {
     }
 
     try {
-      const result = await ipcRenderer.invoke('mcp-execute-tool', connectionId, toolName, parameters);
+      const result = await ipcRenderer.invoke('mcp-execute-tool', toolName, parameters);
       
       if (result.success) {
         const modal = document.createElement('div');
