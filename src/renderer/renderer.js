@@ -320,17 +320,17 @@ class MaiBuddyRenderer {
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
     if (isError) contentDiv.style.borderColor = 'var(--error-color)';
-    if (role === 'assistant' && !isError && typeof marked !== 'undefined') {
+    if (role === 'assistant' && !isError && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
       try {
         const html = marked.parse(content, { gfm: true, breaks: true });
-        contentDiv.innerHTML = (typeof DOMPurify !== 'undefined')
-          ? DOMPurify.sanitize(html)
-          : html;
+        contentDiv.innerHTML = DOMPurify.sanitize(html);
         contentDiv.classList.add('markdown');
       } catch (_) {
         contentDiv.textContent = content;
       }
     } else {
+      // No sanitizer available (or plain/error message): render as plain text
+      // rather than injecting unsanitized model-generated HTML.
       contentDiv.textContent = content;
     }
     
