@@ -91,8 +91,10 @@ class AIService:
             settings.get("aiModel") or settings.get("model") or DEFAULT_MODEL
         )
         custom_prompt = (settings.get("systemPrompt") or "").strip()
-        if custom_prompt:
-            self._system_prompt = custom_prompt
+        # Fall back to the default when the custom prompt is empty so that
+        # clearing systemPrompt in settings reverts a long-lived instance
+        # instead of leaving a stale custom prompt active for the session.
+        self._system_prompt = custom_prompt or DEFAULT_SYSTEM_PROMPT
         api_key = store.get_api_key()
         self._client = Anthropic(api_key=api_key) if api_key else None
 
