@@ -969,7 +969,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    if (!document.querySelector('.modal.hidden')) {
+    // Close any open modal first; only hide the window when none is visible.
+    // Persistent modals (#settingsModal, #mcpModal) live in the DOM as
+    // `.modal.hidden`, so detect visibility via `:not(.hidden)` rather than
+    // the mere presence of a hidden modal.
+    if (document.querySelector('.modal:not(.hidden)')) {
       document.querySelectorAll('.modal').forEach(modal => {
         modal.classList.add('hidden');
       });
