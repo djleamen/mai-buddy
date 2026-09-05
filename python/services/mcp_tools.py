@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -23,6 +24,31 @@ _PROTECTED_ROOTS = (
     "/System", "/etc", "/usr", "/private", "/Library",
     "/bin", "/sbin", "/var", "/dev", "/boot", "/proc", "/sys",
 )
+
+# Credential stores inside the home directory. The AI can call read_file on
+# its own initiative, and anything it reads is sent to the model API, so these
+# stay off-limits even though they are under ~.
+_SENSITIVE_HOME_DIRS = (
+    ".ssh", ".aws", ".gnupg", ".azure", ".config/gcloud", ".kube",
+    "Library/Keychains", "Library/Application Support/mai-buddy",
+)
+
+# Shell commands the AI must never run unattended. The system prompt asks the
+# model to confirm first, but a prompt is not a control; this is.
+# ponytail: regex denylist. Upgrade path is a real confirm dialog in the
+# renderer before execute_command runs.
+_BLOCKED_COMMAND_PATTERNS = tuple(re.compile(p) for p in (
+    r"\brm\s+(-[a-zA-Z]*[rf][a-zA-Z]*\s+)+",   # rm -rf / rm -r / rm -f ...
+    r"\bsudo\b",
+    r"\bmkfs\b|\bdiskutil\b\s+(erase|partition)|\bdd\s+if=",
+    r"\bgit\s+push\b.*(--force|-f\b)|\bgit\s+reset\s+--hard",
+    r"\bchmod\s+(-R\s+)?[0-7]*7[0-7]*\s+/|\bchown\s+-R\s+\S+\s+/",
+    r"\b(curl|wget)\b[^|]*\|\s*(ba|z)?sh\b",             # curl ... | sh
+    r":\(\)\s*\{\s*:\|:&\s*\}",                       # fork bomb
+    r"\bshutdown\b|\breboot\b|\bhalt\b|\bkillall\b",
+))
+
+MAX_COMMAND_TIMEOUT = 120
 
 def _expand(p: str) -> str:
     return os.path.expanduser(p) if p else p
@@ -40,7 +66,20 @@ def _assert_safe_path(raw: str) -> Path:
             raise ValueError(f"Refusing to operate on protected path: {s}")
     if resolved != home and home not in resolved.parents:
         raise ValueError(f"Path is outside the user home directory: {s}")
+    for rel in _SENSITIVE_HOME_DIRS:
+        sensitive = home / rel
+        if resolved == sensitive or sensitive in resolved.parents:
+            raise ValueError(f"Refusing to touch credential store: {s}")
     return resolved
+
+
+def _assert_safe_command(command: str) -> None:
+    for pattern in _BLOCKED_COMMAND_PATTERNS:
+        if pattern.search(command):
+            raise ValueError(
+                "Refusing to run a destructive or privileged command unattended: "
+                f"{command!r}. Run it yourself in a terminal if you really mean it."
+            )
 
 # Backwards-compatible alias; reads, writes and listings share one guard so the
 # AI-callable filesystem tools cannot escape the home sandbox in any direction.
@@ -79,6 +118,12 @@ def _list_directory(path: str) -> Dict[str, Any]:
 def _execute_command(command: str, timeout: int = 30) -> Dict[str, Any]:
     if not command or not isinstance(command, str):
         raise ValueError("command is required")
+    _assert_safe_command(command)
+    try:
+        timeout = int(timeout)
+    except (TypeError, ValueError):
+        timeout = 30
+    timeout = max(1, min(timeout, MAX_COMMAND_TIMEOUT))
     # Run via shell so users can pipe; this is the same trust model as the
     # Node version. Tools should never be invoked without explicit user opt-in.
     proc = subprocess.run(
