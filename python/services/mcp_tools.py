@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shlex
 import subprocess
 from pathlib import Path
@@ -24,8 +25,59 @@ _PROTECTED_ROOTS = (
     "/bin", "/sbin", "/var", "/dev", "/boot", "/proc", "/sys",
 )
 
+# Credential stores inside the home directory. The AI can call read_file on
+# its own initiative, and anything it reads is sent to the model API, so these
+# stay off-limits even though they are under ~. The app's own settings and
+# history store is listed for every platform store.py supports, because the
+# path differs by OS and the AI must not read its way to the API keys.
+_SENSITIVE_HOME_DIRS = (
+    ".ssh", ".aws", ".gnupg", ".azure", ".config/gcloud", ".kube",
+    "Library/Keychains",
+    "Library/Application Support/mai-buddy",   # macOS
+    ".config/mai-buddy",                       # Linux / XDG default
+    "AppData/Roaming/mai-buddy",               # Windows
+)
+
+# Shell commands the AI must never run unattended. The system prompt asks the
+# model to confirm first, but a prompt is not a control; this is.
+# ponytail: regex denylist. Upgrade path is a real confirm dialog in the
+# renderer before execute_command runs.
+_BLOCKED_COMMAND_PATTERNS = tuple(re.compile(p) for p in (
+    # rm with any recursive/force flag, short (-r, -R, -f, -rf, -Rf) or long
+    # (--recursive, --force), including when other flags precede it.
+    r"\brm\s+(?:-{1,2}[\w-]+\s+)*-{1,2}(?:[a-zA-Z]*[rRf][a-zA-Z]*|recursive|force)\b",
+    r"\bsudo\b",
+    r"\bmkfs\b|\bdiskutil\b\s+(erase|partition)|\bdd\s+if=",
+    r"\bgit\s+push\b.*(--force|-f\b)|\bgit\s+reset\s+--hard",
+    # Recursive chmod/chown whose target is the filesystem root. Requires both
+    # the recursion flag and a bare `/` argument, so `chmod 755 ~/bin/tool` and
+    # `chmod -R u+w ~/project` are left alone while `chmod -R 644 /` and
+    # `chown -R me /` are not.
+    r"\b(?:chmod|chown)\b(?=[^;|&]*\s-{1,2}(?:[rR]|recursive)\b)[^;|&]*\s/(?:\s|$)",
+    r"\b(curl|wget)\b[^|]*\|\s*(ba|z)?sh\b",             # curl ... | sh
+    r":\(\)\s*\{\s*:\|:&\s*\}",                       # fork bomb
+    r"\bshutdown\b|\breboot\b|\bhalt\b|\bkillall\b",
+))
+
+MAX_COMMAND_TIMEOUT = 120
+
 def _expand(p: str) -> str:
     return os.path.expanduser(p) if p else p
+
+def _sensitive_paths(home: Path) -> List[Path]:
+    """Absolute paths the AI-callable filesystem tools must never touch.
+
+    The static list above covers the usual credential stores. The app's own
+    config directory is added from ``store._config_dir()`` as well, so the
+    guard follows an XDG_CONFIG_HOME override or a future change to that
+    function instead of drifting from it.
+    """
+    paths = [home / rel for rel in _SENSITIVE_HOME_DIRS]
+    try:
+        paths.append(store._config_dir().resolve())
+    except OSError:  # pragma: no cover - unwritable HOME
+        pass
+    return paths
 
 def _assert_safe_path(raw: str) -> Path:
     if not isinstance(raw, str) or not raw:
@@ -40,7 +92,19 @@ def _assert_safe_path(raw: str) -> Path:
             raise ValueError(f"Refusing to operate on protected path: {s}")
     if resolved != home and home not in resolved.parents:
         raise ValueError(f"Path is outside the user home directory: {s}")
+    for sensitive in _sensitive_paths(home):
+        if resolved == sensitive or sensitive in resolved.parents:
+            raise ValueError(f"Refusing to touch credential store: {s}")
     return resolved
+
+
+def _assert_safe_command(command: str) -> None:
+    for pattern in _BLOCKED_COMMAND_PATTERNS:
+        if pattern.search(command):
+            raise ValueError(
+                "Refusing to run a destructive or privileged command unattended: "
+                f"{command!r}. Run it yourself in a terminal if you really mean it."
+            )
 
 # Backwards-compatible alias; reads, writes and listings share one guard so the
 # AI-callable filesystem tools cannot escape the home sandbox in any direction.
@@ -79,6 +143,12 @@ def _list_directory(path: str) -> Dict[str, Any]:
 def _execute_command(command: str, timeout: int = 30) -> Dict[str, Any]:
     if not command or not isinstance(command, str):
         raise ValueError("command is required")
+    _assert_safe_command(command)
+    try:
+        timeout = int(timeout)
+    except (TypeError, ValueError):
+        timeout = 30
+    timeout = max(1, min(timeout, MAX_COMMAND_TIMEOUT))
     # Run via shell so users can pipe; this is the same trust model as the
     # Node version. Tools should never be invoked without explicit user opt-in.
     proc = subprocess.run(
