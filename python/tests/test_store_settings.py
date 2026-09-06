@@ -38,6 +38,9 @@ def test_get_public_settings_replaces_secrets_with_presence_flags(isolated_store
     assert public["hasAnthropicApiKey"] is True
     assert public["hasApiKey"] is True  # mirrored from the anthropic key
     assert public["hasElevenLabsApiKey"] is False
+    # Every secret key gets a stable flag, even ones with no default or value.
+    assert public["hasGithubToken"] is False
+    assert set(public) >= {store._presence_key(k) for k in store.SECRET_KEYS}
     # Non-secret settings pass through unchanged.
     assert public["aiModel"] == "claude-sonnet-4-5"
 

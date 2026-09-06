@@ -125,7 +125,10 @@ def get_public_settings() -> Dict[str, Any]:
     ``get_settings()``.
     """
     settings = get_settings()
-    public: Dict[str, Any] = {}
+    # Seed every presence flag to False so the schema is stable even for secret
+    # keys that have no default and no stored value (e.g. githubToken); callers
+    # never have to distinguish "missing" from "false".
+    public: Dict[str, Any] = {_presence_key(k): False for k in SECRET_KEYS}
     for key, value in settings.items():
         if key in SECRET_KEYS:
             public[_presence_key(key)] = bool(value)

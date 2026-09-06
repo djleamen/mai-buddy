@@ -475,9 +475,9 @@ class MaiBuddyRenderer {
 
     // Only send secret fields the user actually typed into; a blank field means
     // "keep the existing key" so an unchanged save never clears a stored secret.
-    const anthropicApiKey = document.getElementById('anthropicApiKey').value;
+    const anthropicApiKey = document.getElementById('anthropicApiKey').value.trim();
     if (anthropicApiKey) settings.anthropicApiKey = anthropicApiKey;
-    const elevenLabsApiKey = document.getElementById('elevenLabsApiKey').value;
+    const elevenLabsApiKey = document.getElementById('elevenLabsApiKey').value.trim();
     if (elevenLabsApiKey) settings.elevenLabsApiKey = elevenLabsApiKey;
 
     try {
