@@ -41,7 +41,9 @@ class Api:
             return {"success": False, "error": str(exc)}
 
     def do_get_settings(self) -> Dict[str, Any]:
-        return store.get_settings()
+        # Never echo plaintext secrets to the renderer; the UI only needs the
+        # non-secret settings plus `has<Key>` presence flags.
+        return store.get_public_settings()
 
     def do_save_settings(self, settings: Dict[str, Any]) -> Dict[str, Any]:
         store.save_settings(settings or {})

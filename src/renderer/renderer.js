@@ -408,8 +408,10 @@ class MaiBuddyRenderer {
   }
 
   updateConnectionStatus() {
-    const hasApiKey = this.currentSettings.apiKey && this.currentSettings.apiKey.length > 0;
-    
+    // The backend sends a `hasApiKey` presence flag rather than the plaintext
+    // key, so the status indicator never depends on a secret reaching the DOM.
+    const hasApiKey = !!this.currentSettings.hasApiKey;
+
     if (hasApiKey) {
       this.statusIndicator.className = 'status-indicator online';
       this.statusText.textContent = 'Connected';
@@ -428,9 +430,26 @@ class MaiBuddyRenderer {
     this.settingsModal.classList.add('hidden');
   }
 
+  // Secret inputs are never prefilled with the real key (the backend no longer
+  // sends it). Show a "configured" placeholder when one is stored; leaving the
+  // field blank on save keeps the existing key.
+  loadSecretField(id, hasValue) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    input.value = '';
+    if (hasValue) {
+      if (input.dataset.originalPlaceholder == null) {
+        input.dataset.originalPlaceholder = input.placeholder || '';
+      }
+      input.placeholder = '•••••••• (leave blank to keep existing)';
+    } else if (input.dataset.originalPlaceholder != null) {
+      input.placeholder = input.dataset.originalPlaceholder;
+    }
+  }
+
   loadSettingsIntoForm() {
-    document.getElementById('anthropicApiKey').value = this.currentSettings.anthropicApiKey || '';
-    document.getElementById('elevenLabsApiKey').value = this.currentSettings.elevenLabsApiKey || '';
+    this.loadSecretField('anthropicApiKey', this.currentSettings.hasAnthropicApiKey);
+    this.loadSecretField('elevenLabsApiKey', this.currentSettings.hasElevenLabsApiKey);
     document.getElementById('aiModel').value = this.currentSettings.aiModel || 'claude-sonnet-4-5';
     document.getElementById('systemPrompt').value = this.currentSettings.systemPrompt || '';
     
@@ -445,8 +464,6 @@ class MaiBuddyRenderer {
 
   async saveSettings() {
     const settings = {
-      anthropicApiKey: document.getElementById('anthropicApiKey').value,
-      elevenLabsApiKey: document.getElementById('elevenLabsApiKey').value,
       aiModel: document.getElementById('aiModel').value,
       systemPrompt: document.getElementById('systemPrompt').value,
       startOnBoot: document.getElementById('startOnBoot').checked,
@@ -455,7 +472,14 @@ class MaiBuddyRenderer {
       voiceId: document.getElementById('voiceId').value,
       voiceStability: Number.parseFloat(document.getElementById('voiceStability').value)
     };
-    
+
+    // Only send secret fields the user actually typed into; a blank field means
+    // "keep the existing key" so an unchanged save never clears a stored secret.
+    const anthropicApiKey = document.getElementById('anthropicApiKey').value;
+    if (anthropicApiKey) settings.anthropicApiKey = anthropicApiKey;
+    const elevenLabsApiKey = document.getElementById('elevenLabsApiKey').value;
+    if (elevenLabsApiKey) settings.elevenLabsApiKey = elevenLabsApiKey;
+
     try {
       await ipcRenderer.invoke('save-settings', settings);
       // Re-fetch from backend so we pick up server-side mirrors

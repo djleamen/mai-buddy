@@ -109,6 +109,31 @@ def get_settings() -> Dict[str, Any]:
     return merged
 
 
+def _presence_key(secret_key: str) -> str:
+    """Map a secret key to its renderer-facing presence flag, e.g.
+    ``anthropicApiKey`` -> ``hasAnthropicApiKey``."""
+    return "has" + secret_key[:1].upper() + secret_key[1:]
+
+
+def get_public_settings() -> Dict[str, Any]:
+    """Return settings safe to hand to the renderer.
+
+    Plaintext secrets never leave the backend: each ``SECRET_KEYS`` entry is
+    replaced by a ``has<Key>`` boolean so the UI can show a "configured" state
+    and drive the connection-status indicator without receiving the raw
+    credential. Server-side callers that genuinely need the values keep using
+    ``get_settings()``.
+    """
+    settings = get_settings()
+    public: Dict[str, Any] = {}
+    for key, value in settings.items():
+        if key in SECRET_KEYS:
+            public[_presence_key(key)] = bool(value)
+            continue
+        public[key] = value
+    return public
+
+
 def save_settings(settings: Dict[str, Any]) -> None:
     """Persist settings, keeping secrets out of the JSON file."""
     sanitised: Dict[str, Any] = {}
