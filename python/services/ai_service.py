@@ -190,6 +190,18 @@ class AIService:
             self._history.append({"role": "user", "content": tool_results})
         else:
             state["reply_text"] = state["reply_text"] or "(tool-use loop exceeded iteration cap)"
+            # The loop hit its iteration cap while the model was still asking
+            # for tools, so history now ends on an assistant(tool_use) ->
+            # user(tool_result) pair. Persisting that dangling tail bricks the
+            # conversation: the next process_message appends a second user turn
+            # back-to-back, the Messages API rejects the non-alternating roles,
+            # and the except handler only strips the newly added turn — leaving
+            # the bad tail on disk so every later message fails too. Close the
+            # exchange with a resolving assistant turn, as every other exit path
+            # does, so history ends on an assistant turn.
+            self._history.append(
+                {"role": "assistant", "content": [{"type": "text", "text": state["reply_text"]}]}
+            )
 
     @staticmethod
     def _accumulate_usage(response: Any, state: Dict[str, Any]) -> None:
