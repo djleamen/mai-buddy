@@ -74,7 +74,7 @@ python/
     mcp_tools.py          # Built-in tools (filesystem, shell, GitHub)
     store.py              # Settings + keychain secret storage
     tray_service.py       # Menu-bar icon (pystray)
-    hotkey_service.py     # HTML/CSS/JS UI loaded by pywebview
+    hotkey_service.py     # Global hotkey listener (pynput)
 assets/                   # Icons
 ```
 > The legacy Electron source under `src/main/` is no longer used and will be removed in a future commit.
