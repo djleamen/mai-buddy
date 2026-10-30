@@ -91,3 +91,59 @@ def test_second_message_after_capped_loop_stays_alternating(service):
 
     assert not _has_consecutive_user_turns(service._history)
     assert service._history[-1]["role"] == "assistant"
+
+
+class _OneToolThenText:
+    """Asks for a single tool call, then answers in text."""
+
+    def __init__(self, name, tool_input):
+        self.messages = self
+        self.calls = 0
+        self._name = name
+        self._input = tool_input
+
+    def create(self, **_kwargs):
+        self.calls += 1
+        if self.calls == 1:
+            return _Resp(
+                [{"type": "tool_use", "id": "t1", "name": self._name, "input": self._input}],
+                "tool_use",
+            )
+        return _Resp([{"type": "text", "text": "done"}], "end_turn")
+
+
+@pytest.mark.parametrize("tool", ["execute_command", "write_file"])
+def test_side_effecting_tools_need_user_approval(service, monkeypatch, tool):
+    executed = []
+    monkeypatch.setattr(
+        mcp_tools, "execute_tool",
+        lambda name, tool_input: executed.append(name) or {"success": True, "result": "ok"},
+    )
+    asked = []
+    service.approve_tool = lambda name, tool_input: asked.append(name) or False
+    service._client = _OneToolThenText(tool, {"command": "echo hi", "path": "~/x", "content": "y"})
+
+    service.process_message("do it")
+
+    assert asked == [tool]
+    assert executed == []  # declined -> never ran
+    tool_result = service._history[-2]["content"][0]
+    assert tool_result["is_error"] is True and "declined" in tool_result["content"]
+
+
+def test_read_only_tools_run_without_prompt(service, monkeypatch):
+    executed = []
+    monkeypatch.setattr(
+        mcp_tools, "execute_tool",
+        lambda name, tool_input: executed.append(name) or {"success": True, "result": "ok"},
+    )
+    service.approve_tool = lambda *_: pytest.fail("read-only tools must not prompt")
+    service._client = _OneToolThenText("read_file", {"path": "~/notes.txt"})
+
+    service.process_message("read it")
+
+    assert executed == ["read_file"]
+
+
+def test_default_service_denies_side_effects_until_ui_installs_a_prompt(service):
+    assert service.approve_tool("execute_command", {"command": "ls"}) is False

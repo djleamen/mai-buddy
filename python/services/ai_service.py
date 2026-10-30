@@ -8,7 +8,7 @@ changes.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Callable, Dict, List
 
 from anthropic import Anthropic
 
@@ -75,8 +75,21 @@ Tool-use rules:
 """
 
 
+# Tools with side effects on the user's machine. Anything the model reads (a
+# file, a GitHub issue) can carry a prompt injection, so these never run on
+# the model's say-so alone: the user approves each call.
+TOOLS_REQUIRING_APPROVAL = frozenset({"execute_command", "write_file"})
+
+
+def _deny_all(_name: str, _tool_input: Dict[str, Any]) -> bool:
+    return False
+
+
 class AIService:
     def __init__(self) -> None:
+        # Asked before any TOOLS_REQUIRING_APPROVAL call; returns True to run it.
+        # Fails closed until the UI installs a real prompt (see api.Api).
+        self.approve_tool: Callable[[str, Dict[str, Any]], bool] = _deny_all
         self._client: Anthropic | None = None
         self._model: str = DEFAULT_MODEL
         # Content can be a string (simple turn) or an Anthropic content-block
@@ -211,9 +224,8 @@ class AIService:
         state["usage_in"] += getattr(u, "input_tokens", 0) or 0
         state["usage_out"] += getattr(u, "output_tokens", 0) or 0
 
-    @staticmethod
     def _handle_tool_uses(
-        assistant_blocks: List[Dict[str, Any]], state: Dict[str, Any]
+        self, assistant_blocks: List[Dict[str, Any]], state: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         tool_results: List[Dict[str, Any]] = []
         for block in assistant_blocks:
@@ -222,8 +234,12 @@ class AIService:
             state["tool_executed"] = True
             name = block.get("name", "")
             tool_input = block.get("input") or {}
-            log.info("AI invoking tool %s with %s", name, tool_input)
-            res = mcp_tools.execute_tool(name, tool_input)
+            if name in TOOLS_REQUIRING_APPROVAL and not self.approve_tool(name, tool_input):
+                log.info("User declined tool %s", name)
+                res = {"success": False, "error": "The user declined to run this tool call."}
+            else:
+                log.info("AI invoking tool %s with %s", name, tool_input)
+                res = mcp_tools.execute_tool(name, tool_input)
             state["last_tool_result"] = res
             if not res.get("success"):
                 state["tool_error"] = res.get("error")
