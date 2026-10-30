@@ -231,7 +231,6 @@ class AIService:
         for block in assistant_blocks:
             if block.get("type") != "tool_use":
                 continue
-            state["tool_executed"] = True
             name = block.get("name", "")
             tool_input = block.get("input") or {}
             if name in TOOLS_REQUIRING_APPROVAL and not self.approve_tool(name, tool_input):
@@ -239,6 +238,7 @@ class AIService:
                 res = {"success": False, "error": "The user declined to run this tool call."}
             else:
                 log.info("AI invoking tool %s with %s", name, tool_input)
+                state["tool_executed"] = True
                 res = mcp_tools.execute_tool(name, tool_input)
             state["last_tool_result"] = res
             if not res.get("success"):

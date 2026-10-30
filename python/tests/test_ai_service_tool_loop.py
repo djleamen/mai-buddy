@@ -123,8 +123,9 @@ def test_side_effecting_tools_need_user_approval(service, monkeypatch, tool):
     service.approve_tool = lambda name, tool_input: asked.append(name) or False
     service._client = _OneToolThenText(tool, {"command": "echo hi", "path": "~/x", "content": "y"})
 
-    service.process_message("do it")
+    result = service.process_message("do it")
 
+    assert result["toolExecuted"] is False  # UI must not report "Tool Executed"
     assert asked == [tool]
     assert executed == []  # declined -> never ran
     tool_result = service._history[-2]["content"][0]
