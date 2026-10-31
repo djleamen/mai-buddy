@@ -38,10 +38,10 @@ _SENSITIVE_HOME_DIRS = (
     "AppData/Roaming/mai-buddy",               # Windows
 )
 
-# Shell commands the AI must never run unattended. The system prompt asks the
-# model to confirm first, but a prompt is not a control; this is.
-# ponytail: regex denylist. Upgrade path is a real confirm dialog in the
-# renderer before execute_command runs.
+# Shell commands the AI must never run, even with approval. Every
+# execute_command/write_file call also needs a yes from the user in a native
+# dialog (ai_service.TOOLS_REQUIRING_APPROVAL); this denylist is the
+# defence-in-depth layer for the obviously catastrophic ones.
 _BLOCKED_COMMAND_PATTERNS = tuple(re.compile(p) for p in (
     # rm with any recursive/force flag, short (-r, -R, -f, -rf, -Rf) or long
     # (--recursive, --force), including when other flags precede it.

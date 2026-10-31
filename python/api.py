@@ -21,7 +21,26 @@ class Api:
     def __init__(self) -> None:
         self.window = None
         self.ai = AIService()
+        self.ai.approve_tool = self._approve_tool
         self.quit_callback: Optional[Callable[[], None]] = None
+
+    def _approve_tool(self, name: str, tool_input: Dict[str, Any]) -> bool:
+        """Native yes/no dialog before the AI runs a side-effecting tool."""
+        if self.window is None:
+            return False
+        if name == "execute_command":
+            title = "Allow Mai Buddy to run this command?"
+            detail = str(tool_input.get("command", ""))
+        else:
+            title = "Allow Mai Buddy to write this file?"
+            content = str(tool_input.get("content") or "")
+            preview = content[:400] + ("…" if len(content) > 400 else "")
+            detail = f"{tool_input.get('path', '')}\n({len(content)} characters)\n\n{preview}"
+        try:
+            return bool(self.window.create_confirmation_dialog(title, detail))
+        except Exception as exc:  # pylint: disable=broad-except
+            log.warning("Could not show approval dialog: %s", exc)
+            return False
 
     def _channel_to_method(self, channel: str) -> str:
         return "do_" + channel.replace("-", "_")

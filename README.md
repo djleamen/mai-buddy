@@ -12,6 +12,7 @@ A customizable, personal desktop AI agent powered by **Anthropic Claude**, built
 - **Built-in MCP tools** the AI can call autonomously:
   - `filesystem`: `read_file`, `write_file`, `list_directory` (writes restricted to your home directory)
   - `system`: `execute_command` (shell)
+  - Shell commands and file writes always show a native **Allow / Cancel** dialog first, so text the AI reads (a file, a GitHub issue) can't trigger them on its own
   - `github`: list repos, get repo, list issues, search code
 - **Markdown-rendered responses** in the chat (sanitized via DOMPurify)
 - **Secure secret storage** via the macOS keychain (`keyring`)
